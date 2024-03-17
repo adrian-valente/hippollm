@@ -3,7 +3,7 @@ import sys
 
 from langchain_community.document_loaders import WikipediaLoader
 from langchain_community.llms import Ollama
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 
 from helpers import *
 from prompts import *
@@ -16,11 +16,13 @@ MODEL = 'mistral'
 
 if __name__ == "__main__":
     query = 'Paris' # sys.argv[1]
+    db_location = 'wikidb' # sys.argv[2]
     loader = WikipediaLoader(query=query, doc_content_chars_max=1000000)
     docs = loader.load()
     llm = Ollama(model=MODEL)
     
-    db = storage.EntityStore(OllamaEmbeddings(model=MODEL))
+    embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    db = storage.EntityStore(embedding_model=embedding_model, persist_dir=db_location)
     
     for doc in docs:
         print("Document:", doc.metadata['title'])
@@ -59,7 +61,7 @@ if __name__ == "__main__":
                         break 
                 
                 # Extract entities related to the fact
-                entities = db.get_closest_entities(fact, n=10)
+                entities = db.get_closest_entities(fact, k=10)
                 kept_entities = []
                 for entity in entities:
                     prompt = entity_selection_prompt.format(fact=fact, context=ctx, entity=entity)

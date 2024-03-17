@@ -1,0 +1,12 @@
+name: hippo_env
+channels: 
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    - chromadb=
+    - langchain=0.1.11
+    - sentence-transformers=2.5.1
+dev_dependencies:
+  - pytest=8.1.1
