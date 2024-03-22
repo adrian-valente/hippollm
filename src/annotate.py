@@ -48,7 +48,10 @@ if __name__ == "__main__":
             
             for fact in facts:
                 # Check if fact not already registered (if so add source)
+                print('Processing new fact:')
+                print(fact)
                 related_facts = db.get_closest_facts(fact)
+                jump = False
                 for related in related_facts:
                     prompt = confrontation_prompt.format(
                         fact=fact, 
@@ -58,25 +61,52 @@ if __name__ == "__main__":
                     res = llm.invoke(confrontation_prompt)
                     if res.lower().strip().startswith('yes'):
                         db.add_fact_source(related.id, source)
-                        break 
+                        print('Identified an equivalent fact in the database: ', related.text)
+                        jump = True
+                if jump:
+                    continue
                 
                 # Extract entities related to the fact
-                entities = db.get_closest_entities(fact, k=10)
-                kept_entities = []
-                for entity in entities:
+                kept_entities = set()
+                # Prompt to extract entities in zero-shot fashion
+                extraction_prompt = entity_extraction_prompt.format(fact=fact, context=ctx)
+                entities_extracted = parse_bullet_points(llm.invoke(extraction_prompt))
+                print('Extracted entities:')
+                print(entities_extracted)
+                
+                # Find identified entities in the database, or add them if they don't exist
+                for entity in entities_extracted:
+                    tmp_entities = db.get_closest_entities(entity, k=10)
+                    print(tmp_entities)
+                    prompt = entity_equivalence_prompt.format(
+                        fact=fact,
+                        context=ctx,
+                        entity=entity,
+                        choices=join_bullet_points(tmp_entities)
+                    )
+                    ans = choice_selection(llm.invoke(prompt).strip(), tmp_entities + ['none'])
+                    if ans is not None:
+                        kept_entities.add(ans.name)
+                        print('Entity', entity, 'considered equivalent to', ans)
+                    else:
+                        db.add_entity(name=entity)
+                        kept_entities.add(entity)
+                        print('Entity', entity, 'added to the database.')
+                    
+                        
+                # Find other entities that the model could have missed through sim search
+                tmp_entities = db.get_closest_entities(fact, k=10)
+                print(tmp_entities)
+                # Finally, let the model decide which entities are really involved
+                for entity in tmp_entities:
                     prompt = entity_selection_prompt.format(fact=fact, context=ctx, entity=entity)
                     ans = llm.invoke(prompt).strip()
                     if ans.lower().startswith('yes'):
-                        kept_entities.append(entity)
-                prompt = get_new_entities_prompt(fact=fact, context=ctx, entities=entities)
-                new_entities = parse_bullet_points(llm.invoke(prompt))
-                print(fact)
-                print(new_entities)
-                
-                # Build the new entities and add them to the database
-                for entity in new_entities:
-                    db.add_entity(name=entity)
+                        kept_entities.add(entity.name)
+                        print('Also adding entity', entity)
                     
+                print('Final entities:')
+                print(list(kept_entities))
                 # Now add the fact to the database
-                db.add_fact(text=fact, entities=kept_entities+new_entities, source=source)
+                db.add_fact(text=fact, entities=list(kept_entities), source=source)
                 

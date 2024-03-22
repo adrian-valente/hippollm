@@ -64,7 +64,7 @@ import storage
 
 def parse_wiki_xml(file_name, limit=None):
     context = ElementTree.iterparse(file_name, events=("start", "end"))
-    result = []
+    result = {}
     for event, elem in context:
         if event == "end" and elem.tag == 'doc':
             title = elem.find('title')
@@ -74,7 +74,7 @@ def parse_wiki_xml(file_name, limit=None):
                     title = title.text[11:]
                 else:
                     title = title.text
-                result.append((title, abstract.text if abstract is not None else ''))
+                result[title] = abstract.text if abstract is not None else ''
                 title = None
                 abstract = None
                 if limit is not None and len(result) > limit:
@@ -82,17 +82,33 @@ def parse_wiki_xml(file_name, limit=None):
             elem.clear()
     return result
 
+
+def parse_pageviews(file_name):
+    with open(file_name, 'r') as f:
+        lines = f.readlines()
+    return [line.split()[1].replace('_', ' ') for line in lines]
+
+
 if __name__ == '__main__':
     embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
     db = storage.EntityStore(embedding_model=embedding_model, persist_dir='wikidb')
+    
+    # Retrieve all titles and abstracts (in english)
     t0 = time()
-    titles_abstracts = parse_wiki_xml('../../enwiki-20240301-abstract.xml', limit=10000)
+    titles_abstracts = parse_wiki_xml('../../enwiki-20240301-abstract.xml')
     print(f'Parsed {len(titles_abstracts)} titles and abstracts in {time() - t0:.2f} seconds.')
+    
+    # Retrieve articles visited in the past month (from the pageviews dump)
+    viewed_titles = set(parse_pageviews('../../pageviews-20240301-000000'))
+    titles_abstracts = {k: v for k, v in titles_abstracts.items() if k in viewed_titles}
+    print('Remaining titles:', len(titles_abstracts))
+    print('Est. time to add:', len(titles_abstracts) * 160 / (10000 * 60), 'minutes.')
+    
     t0 = time()
-    for i, ta in enumerate(titles_abstracts):
-        db.add_entity(name=ta[0], description=ta[1])
-        if i > 10000:
-            break
+    for i, kv in enumerate(titles_abstracts.items()):
+        name = kv[0]
+        desc = kv[1] if kv[1] is not None else ''
+        db.add_entity(name=name, description=desc)
     print(f'Added {i} entities in {time() - t0:.2f} seconds.')
     db.save()
     

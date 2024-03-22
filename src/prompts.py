@@ -11,16 +11,29 @@ contextualization_prompt = PromptTemplate.from_template(
 
 annotation_prompt = PromptTemplate.from_template(
     """Here is an extract of a text of the following type: {context}
-    Write simple statements summarizing all the facts stated in the following text. Make each statement as atomic as possible, and keeping the sentences as concise as possible. Here is the text:
+    Write simple statements summarizing all the facts stated in the following text. Make each statement as atomic as possible, and keeping the sentences as concise as possible. Extract only those facts that contain general knowledge, and not specificities of this text. Here is the text:
     {text}
-    """
+    
+    Facts:
+    - """
 )
 
 confrontation_prompt = PromptTemplate.from_template(
-    """Here is a fact: {fact}. It has been extracted in a text of the following type: {context}.
+    """Here are two facts:
+    A) {fact}
+    B) {other_fact}
     
-    We also know that the following fact is true: {other_fact}. Do you think that the two facts are equivalent? Please answer Yes or No.
+    Classify those facts between the following categories: Equivalent, A generalizes B, B generalizes A, Contradictory, or Unrelated.
     """
+)
+
+entity_extraction_prompt = PromptTemplate.from_template(
+    """Extract entities involved in the following fact, that has been extracted in a text of the type {context}.
+    
+    Fact: {fact}
+    
+    Entities:
+    - """
 )
 
 entity_selection_prompt = PromptTemplate.from_template(
@@ -37,6 +50,21 @@ entity_selection_prompt = PromptTemplate.from_template(
 #     {choices}
 #     """
 # )
+
+
+entity_equivalence_prompt = PromptTemplate.from_template(
+    """Here is a fact: {fact} It has been extracted in a text of the following type: {context}
+    
+    Among the following entities, is there one that is equivalent to the entity {entity} involved in the fact stated above? Please answer with the name of the equivalent entity, or None if there is no equivalent entity.
+    
+    Target entity: {entity}
+    
+    List of candidates:
+    {choices}
+    - None of the above
+    
+    Equivalent entity or None: """
+)
     
 
 new_entities_prompt = PromptTemplate.from_template(

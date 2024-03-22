@@ -12,5 +12,21 @@ def parse_bullet_points(text):
     bullets = [x for x in bullets if x and not x.startswith("None")]
     return bullets
 
+def join_bullet_points(items):
+    return "\n".join(["- " + str(x) for x in items])
+
 def itemize_list(items):
-    return "\n".join(["- " + x for x in items])
+    return "\n".join(["- " + str(x) for x in items])
+
+def choice_selection(answer, choices):
+    answer = answer.strip().lower()
+    if answer.startswith("none"):
+        return None
+    for choice in choices:
+        if answer.startswith(str(choice).lower()):
+            return choice
+    # Second pass (robustness)
+    for choice in choices:
+        if str(choice).lower() in answer:
+            return choice
+    return None

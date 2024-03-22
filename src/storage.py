@@ -13,6 +13,12 @@ class Entity:
     name: str
     description: str
     facts: List[int]  # List of indices of facts in the facts list
+    
+    def __repr__(self) -> str:
+        if self.description:
+            return f"{self.name} ({self.description})"
+        else:
+            return self.name
 
 
 @dataclass
@@ -109,7 +115,11 @@ class EntityStore:
             confidence=1.0,
             id=len(self.facts)
         )
-        self.chroma_facts.add_texts([text], ids=[str(len(self.facts))])
+        self.chroma_facts.add_texts(
+            [text], 
+            ids=[str(len(self.facts))], 
+            metadatas=[{'id': str(len(self.facts))}]
+        )
         self.facts.append(fact)
         for entity in entities:
             self.entities[entity].facts.append(len(self.facts) - 1)
@@ -135,7 +145,8 @@ class EntityStore:
         except Exception as e:
             print(e)
             return []
-        closest = [self.facts[int(c)] for c in closest]
+        print(closest)
+        closest = [self.facts[int(c.metadata['id'])] for c in closest]
         return [f[0] for f in closest]
     
     
