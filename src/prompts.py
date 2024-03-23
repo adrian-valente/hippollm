@@ -28,7 +28,7 @@ confrontation_prompt = PromptTemplate.from_template(
 )
 
 entity_extraction_prompt = PromptTemplate.from_template(
-    """Extract entities involved in the following fact, that has been extracted in a text of the type {context}. Only extract the names of standalone entities that are present in the fact, excluding any numbers.
+    """Extract entities involved in the following fact, that has been extracted in a text of the type {context}. Only extract the names of standalone entities that are present in the fact, excluding any numbers. Only give entities in a bullet list and do not give any details or explanations.
     
     Fact: {fact}
     

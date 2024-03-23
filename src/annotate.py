@@ -82,7 +82,9 @@ if __name__ == "__main__":
                     # Prompt to find equivalent entities in the database
                     tmp_entities = db.get_closest_entities(entity, k=10)
                     print(tmp_entities)
-                    if tmp_entities:
+                    if entity in tmp_entities:
+                        ans = entity
+                    elif tmp_entities:
                         prompt = entity_equivalence_prompt.format(
                             fact=fact,
                             context=ctx,
@@ -104,6 +106,7 @@ if __name__ == "__main__":
                         
                 # Find other entities that the model could have missed through sim search
                 tmp_entities = db.get_closest_entities(fact, k=10)
+                tmp_entities = [x for x in tmp_entities if x.name not in kept_entities]
                 print(tmp_entities)
                 # Finally, let the model decide which entities are really involved
                 for entity in tmp_entities:
