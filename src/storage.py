@@ -147,7 +147,7 @@ class EntityStore:
             return []
         print(closest)
         closest = [self.facts[int(c.metadata['id'])] for c in closest]
-        return [f[0] for f in closest]
+        return closest
     
     
     def load(self) -> None:

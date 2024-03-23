@@ -16,13 +16,16 @@ MODEL = 'mistral'
 
 if __name__ == "__main__":
     query = 'Paris' # sys.argv[1]
-    db_location = 'wikidb' # sys.argv[2]
+    db_location = 'wiki_test' # sys.argv[2]
     loader = WikipediaLoader(query=query, doc_content_chars_max=1000000)
     docs = loader.load()
     llm = Ollama(model=MODEL)
     
     embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    
+    print('Loading database', db_location)
     db = storage.EntityStore(embedding_model=embedding_model, persist_dir=db_location)
+    print(f'Loaded database with {len(db.entities)} entities and {len(db.facts)} facts.')
     
     for doc in docs:
         print("Document:", doc.metadata['title'])
@@ -58,7 +61,7 @@ if __name__ == "__main__":
                         context=ctx, 
                         other_fact=related.text
                     )
-                    res = llm.invoke(confrontation_prompt)
+                    res = llm.invoke(prompt)
                     if res.lower().strip().startswith('yes'):
                         db.add_fact_source(related.id, source)
                         print('Identified an equivalent fact in the database: ', related.text)
@@ -76,15 +79,20 @@ if __name__ == "__main__":
                 
                 # Find identified entities in the database, or add them if they don't exist
                 for entity in entities_extracted:
+                    # Prompt to find equivalent entities in the database
                     tmp_entities = db.get_closest_entities(entity, k=10)
                     print(tmp_entities)
-                    prompt = entity_equivalence_prompt.format(
-                        fact=fact,
-                        context=ctx,
-                        entity=entity,
-                        choices=join_bullet_points(tmp_entities)
-                    )
-                    ans = choice_selection(llm.invoke(prompt).strip(), tmp_entities + ['none'])
+                    if tmp_entities:
+                        prompt = entity_equivalence_prompt.format(
+                            fact=fact,
+                            context=ctx,
+                            entity=entity,
+                            choices=join_bullet_points(tmp_entities)
+                        )
+                        ans = choice_selection(llm.invoke(prompt).strip(), tmp_entities)
+                    else:
+                        ans = None
+                    # If an equivalent entity is found keep it, otherwise create new one
                     if ans is not None:
                         kept_entities.add(ans.name)
                         print('Entity', entity, 'considered equivalent to', ans)
@@ -109,4 +117,6 @@ if __name__ == "__main__":
                 print(list(kept_entities))
                 # Now add the fact to the database
                 db.add_fact(text=fact, entities=list(kept_entities), source=source)
+    
+    db.save()
                 

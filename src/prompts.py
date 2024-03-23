@@ -11,7 +11,7 @@ contextualization_prompt = PromptTemplate.from_template(
 
 annotation_prompt = PromptTemplate.from_template(
     """Here is an extract of a text of the following type: {context}
-    Write simple statements summarizing all the facts stated in the following text. Make each statement as atomic as possible, and keeping the sentences as concise as possible. Extract only those facts that contain general knowledge, and not specificities of this text. Here is the text:
+    Write simple statements summarizing all the facts stated in the following text. Make each statement as atomic as possible, and keeping the sentences as concise as possible. Extract only those facts that contain general knowledge, and not specificities of this text. Make sure each fact can be understood by itself without further context. Here is the text:
     {text}
     
     Facts:
@@ -28,7 +28,7 @@ confrontation_prompt = PromptTemplate.from_template(
 )
 
 entity_extraction_prompt = PromptTemplate.from_template(
-    """Extract entities involved in the following fact, that has been extracted in a text of the type {context}.
+    """Extract entities involved in the following fact, that has been extracted in a text of the type {context}. Only extract the names of standalone entities that are present in the fact, excluding any numbers.
     
     Fact: {fact}
     
