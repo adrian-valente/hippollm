@@ -18,6 +18,20 @@ annotation_prompt = PromptTemplate.from_template(
     - """
 )
 
+reformulation_prompt = PromptTemplate.from_template(
+    """You are a knowledge annotator that extracts standalone facts from text. Your task is to reformulate the following fact in a more general way, so that it can be understood without the context of the text. 
+    
+    Here is the fact: {fact}. 
+    
+    It has been extracted in a text of the following type: {context}. The entire context is the following snippet:
+    
+    {text}
+    
+    Please reformulate the fact so that it can be understood without the context of the text, without changing its meaning. In particular, remove all pronouns and references to elements not in the fact. If the fact is already general enough, keep it as it is. DO NOT ADD ANY INFORMATION, STICK TO THE FACT AS IT IS STATED. Make sure the reformulated fact is atomic and as concise as possible.
+    
+    Reformulated fact: """
+)
+
 confrontation_prompt = PromptTemplate.from_template(
     """Here are two facts:
     A) {fact}
@@ -28,7 +42,7 @@ confrontation_prompt = PromptTemplate.from_template(
 )
 
 entity_extraction_prompt = PromptTemplate.from_template(
-    """Extract entities involved in the following fact, that has been extracted in a text of the type {context}. Only extract the names of standalone entities that are present in the fact, excluding any numbers. Only give entities in a bullet list and do not give any details or explanations.
+    """Extract entities involved in the following fact. Only extract the names of standalone entities that are explicitly stated in the fact, and exclude any numbers. Only give the names of entities in a bullet list so that they can be recognized, and do not explain any thing about them. In particular, do not mention why you added the entity, and do not mention if it is implicit or explicit.
     
     Fact: {fact}
     
@@ -37,9 +51,9 @@ entity_extraction_prompt = PromptTemplate.from_template(
 )
 
 entity_selection_prompt = PromptTemplate.from_template(
-    """Here is a fact: {fact}. It has been extracted in a text of the following type: {context}.
+    """Here is a fact: {fact}.
     
-    Do you think the entity "{entity}" is directly involved in the fact stated above? Please answer Yes or No.
+    Do you think the entity "{entity}" is directly and explicitly involved in the fact stated above? You should answer yes only if the entity is very explicitly present in the sentence that states the fact. Please answer Yes or No.
     """
 )
 #     """
@@ -51,20 +65,24 @@ entity_selection_prompt = PromptTemplate.from_template(
 #     """
 # )
 
-
 entity_equivalence_prompt = PromptTemplate.from_template(
-    """Here is a fact: {fact} It has been extracted in a text of the following type: {context}
-    
-    Among the following entities, is there one that is equivalent to the entity {entity} involved in the fact stated above? Please answer with the name of the equivalent entity, or None if there is no equivalent entity.
-    
-    Target entity: {entity}
-    
-    List of candidates:
-    {choices}
-    - None of the above
-    
-    Equivalent entity or None: """
+    """Are the entities {entity} and {other} equivalent? Please answer Yes or No."""
 )
+
+
+# entity_equivalence_prompt = PromptTemplate.from_template(
+#     """Here is a fact: {fact} It has been extracted in a text of the following type: {context}
+    
+#     Among the following entities, is there one that is equivalent to the entity {entity} involved in the fact stated above? Please answer with the name of the equivalent entity, or None if there is no equivalent entity.
+    
+#     Target entity: {entity}
+    
+#     List of candidates:
+#     {choices}
+#     - None of the above
+    
+#     Equivalent entity or None: """
+# )
     
 
 new_entities_prompt = PromptTemplate.from_template(
