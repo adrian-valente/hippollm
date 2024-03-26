@@ -16,8 +16,8 @@ CTX_SIZE = 5000
 MODEL = 'mistral'
 
 if __name__ == "__main__":
-    query = 'Paris' # sys.argv[1]
-    db_location = 'wiki_test' # sys.argv[2]
+    query = sys.argv[1]
+    db_location = sys.argv[2]
     loader = WikipediaLoader(query=query, doc_content_chars_max=1000000)
     docs = loader.load()
     llm = Ollama(model=MODEL)
@@ -59,21 +59,29 @@ if __name__ == "__main__":
                 # Reformulate
                 reform_prompt = reformulation_prompt.format(fact=fact, context=ctx, text=chunk)
                 fact = llm.invoke(reform_prompt).split('\n')[0].strip()
+                print("After reformulation: ", fact)
                 
                 related_facts = db.get_closest_facts(fact)
+                skip_fact = False
                 for related in related_facts:
                     if nlp_models.detect_entailment(fact, related.text):
-                        # TODO: add fact merging
-                        # prompt = confrontation_prompt.format(
-                        #     fact=fact, 
-                        #     context=ctx, 
-                        #     other_fact=related.text
-                        # )
-                        # res = llm.invoke(prompt)
-                        # if res.lower().strip().startswith('yes'):
-                        db.add_fact_source(related.id, source)
                         print('Identified an overlapping fact in the database: ', related.text)
-                        print('Added source to the fact.')
+                        prompt = confrontation_prompt.format(
+                            fact=fact, 
+                            context=ctx, 
+                            other_fact=related.text
+                        )
+                        res = llm.invoke(prompt)
+                        if res.lower().strip().startswith('yes'):
+                            skip_fact = True
+                            db.add_fact_source(related.id, source)
+                            print('Added source to the fact.')
+                            break
+                            # TODO: add fact merging
+                        else:
+                            print('Considered non redundant')
+                if skip_fact:
+                    continue
                 
                 # Extract entities related to the fact
                 kept_entities = set()
@@ -129,6 +137,5 @@ if __name__ == "__main__":
                 print(list(kept_entities))
                 # Now add the fact to the database
                 db.add_fact(text=fact, entities=list(kept_entities), source=source)
-            break
     db.save()
                 

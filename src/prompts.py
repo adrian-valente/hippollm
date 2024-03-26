@@ -33,11 +33,9 @@ reformulation_prompt = PromptTemplate.from_template(
 )
 
 confrontation_prompt = PromptTemplate.from_template(
-    """Here are two facts:
-    A) {fact}
-    B) {other_fact}
+    """You are a knowledge extractor that identifies overlapping facts. You have identified a new fact and you want to check if it is already present in the database. Here is the new fact: {fact}. The context in which it was extracted is the following snippet: {context}. 
     
-    Classify those facts between the following categories: Equivalent, A generalizes B, B generalizes A, Contradictory, or Unrelated.
+    In the database, we have found this similar fact: {other_fact}. Do you think the second fact is redundant with the first one? Answer Yes or No.
     """
 )
 
@@ -110,6 +108,16 @@ question_prompt = PromptTemplate.from_template(
     {question}
     
     You can answer this question making use of the facts stated below. If one of this facts is particularly relevant to your answer, please mention its number.
+    {facts}
+    """
+)
+
+
+retrieval_prompt = PromptTemplate.from_template(
+    """
+    {query}
+    
+    You may answer using the following facts if they are useful (simply ignore irrelevant facts without mentioning them):
     {facts}
     """
 )

@@ -46,6 +46,9 @@ class Fact:
     sources: List[Source]
     confidence: float
     id: int    # Index of the fact in the facts list
+    
+    def __repr__(self) -> str:
+        return f"{self.text} [" + " ".join(self.entities) + "]"
 
 
 class EntityStore:
@@ -145,7 +148,6 @@ class EntityStore:
         except Exception as e:
             print(e)
             return []
-        print(closest)
         closest = [self.facts[int(c.metadata['id'])] for c in closest]
         return closest
     
