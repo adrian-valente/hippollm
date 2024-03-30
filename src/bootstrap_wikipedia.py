@@ -1,66 +1,26 @@
-import requests
-import xml.etree.ElementTree as ElementTree
+"""
+This scripts populates a database with entities corresponding to Wikipedia's articles in 
+english (titles + abstracts), recovered from the enwiki abstract dump file, keeping only
+articles that have been seen at least once in the past month (from the pageviews dump file),
+which decreases it to about 1.5M entities.
+
+Note: the abstracts obtained through the dump file do not seem to be very informative, as
+they are often empty or contained random arrangements of words and characters. I am still
+looking for a better source of abstracts for higher quality embeddings.
+See notably this reference: https://stackoverflow.com/questions/61449459/are-the-abstracts-in-in-enwiki-latest-abstract-xml-gz-corrupted
+
+Usage:
+python bootstrap_wikipedia.py 
+"""
+
+import argparse
+import os
 from time import time
+import xml.etree.ElementTree as ElementTree
 
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 
 import storage
-
-# def get_wikipedia_titles(continuation=None):
-#     url = 'https://en.wikipedia.org/w/api.php'
-#     params = {
-#         'action': 'query',
-#         'format': 'json',
-#         'list': 'allpages',
-#         'aplimit': 500,  # Maximum number of titles to retrieve per request
-#         'apfrom': continuation,
-#     }
-#     response = requests.get(url, params=params)
-#     data = response.json()
-#     titles = [page['title'] for page in data['query']['allpages']]
-#     if 'continue' in data:
-#         continuation = data['continue']['apcontinue']
-#         titles.extend(get_wikipedia_titles(continuation))
-#     return titles
-
-
-# def get_top_pages(limit=10000):
-#     url = 'https://wikimedia.org/api/rest_v1/metrics/pageviews/top/en.wikipedia/all-access/user'
-#     params = {
-#         'project': 'en.wikipedia',
-#         'platform': 'all-access',
-#         'agent': 'user',
-#         'granularity': 'monthly',
-#         'start': '2024-01-01',
-#         'end': '2024-02-01',
-#         'limit': limit,
-#     }
-#     response = requests.get(url, params=params)
-#     data = response.json()
-#     top_pages = [item['article'] for item in data['items']]
-#     return top_pages
-
-
-# def get_page_info(page_titles):
-#     url = 'https://en.wikipedia.org/w/api.php'
-#     params = {
-#         'action': 'query',
-#         'format': 'json',
-#         'prop': 'extracts',
-#         'titles': '|'.join(page_titles),
-#         'exintro': 1,
-#         'explaintext': 1,
-#         'redirects': 1,
-#     }
-#     response = requests.get(url, params=params)
-#     data = response.json()
-#     page_info = []
-#     for page_id, page_data in data['query']['pages'].items():
-#         title = page_data['title']
-#         extract = page_data['extract']
-#         first_sentence = extract.split('.')[0] + '.'
-#         page_info.append((title, first_sentence))
-#     return page_info
 
 def parse_wiki_xml(file_name, limit=None):
     context = ElementTree.iterparse(file_name, events=("start", "end"))
@@ -90,16 +50,33 @@ def parse_pageviews(file_name):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--db_loc', type=str, help='The database location', required=True)
+    parser.add_argument('--dump_loc', type=str, help='Location for dumps', default='.')
+    parser.parse_args()
+    
     embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
     db = storage.EntityStore(embedding_model=embedding_model, persist_dir='wikidb')
     
+    # Load files if necessary
+    loc_titles_dump = os.path.join(parser.dump_loc, 'enwiki-latest-abstract.xml')
+    if not os.path.exists(loc_titles_dump):
+        os.system(f'wget -O {loc_titles_dump}.gz '
+                   'https://dumps.wikimedia.org/enwiki/latest/enwiki-latest-abstract.xml.gz')
+        os.system(f'gzip -d {loc_titles_dump}.gz')
+    loc_pageviews = os.path.join(parser.dump_loc, 'pageviews-20240301-000000.gz')
+    if not os.path.exists(loc_pageviews):
+        os.system(f'wget -O {loc_pageviews}.gz '
+                   'https://dumps.wikimedia.org/other/pageviews/2024/2024-03/pageviews-20240301-000000.gz')
+        os.system(f'gzip -d {loc_pageviews}.gz')
+    
     # Retrieve all titles and abstracts (in english)
     t0 = time()
-    titles_abstracts = parse_wiki_xml('../../enwiki-20240301-abstract.xml')
+    titles_abstracts = parse_wiki_xml(loc_titles_dump)
     print(f'Parsed {len(titles_abstracts)} titles and abstracts in {time() - t0:.2f} seconds.')
     
     # Retrieve articles visited in the past month (from the pageviews dump)
-    viewed_titles = set(parse_pageviews('../../pageviews-20240301-000000'))
+    viewed_titles = set(parse_pageviews(loc_pageviews))
     titles_abstracts = {k: v for k, v in titles_abstracts.items() if k in viewed_titles}
     print('Remaining titles:', len(titles_abstracts))
     print('Est. time to add:', len(titles_abstracts) * 160 / (10000 * 60), 'minutes.')
