@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Tuple
-import numpy as np
 import os
 import orjson
 from langchain_core.embeddings import Embeddings
@@ -44,8 +43,8 @@ class Fact:
     text: str
     entities: List[str]
     sources: List[Source]
-    confidence: float
-    id: int    # Index of the fact in the facts list
+    confidence: float          # Not used for the moment
+    id: int                    # Index of the fact in the facts list
     
     def __repr__(self) -> str:
         return f"{self.text} [" + " ".join(self.entities) + "]"
@@ -83,6 +82,21 @@ class EntityStore:
             embedding_function=embedding_model,
             persist_directory=facts_persist_dir,
         )
+        self._check_integrity()
+   
+    def _check_integrity(self) -> None:
+        if len(self.entities) != self.chroma_entities._collection.count():
+            raise Exception(
+                'Graph storage seems unconsistent with the number of entities in the '
+                'Chroma DB, the DB was probably not saved after receiving some updates. '
+                'A correction routine will need to be run.'
+            )
+        if len(self.facts) != self.chroma_facts._collection.count():
+            raise Exception(
+                'Graph storage seems unconsistent with the number of facts in the '
+                'Chroma DB, the DB was probably not saved after receiving some updates. '
+                'A correction routine will need to be run.'
+            )
 
     def add_entity(self, 
                    name: str,
@@ -91,7 +105,7 @@ class EntityStore:
         if name in self.entities:
             print(f"Entity {name} already exists in the store.")
             return
-        desc = name  + " " + description
+        desc = name  + " (" + description + ")"
         entity = Entity(
             name=name, 
             description=description, 
@@ -150,7 +164,6 @@ class EntityStore:
             return []
         closest = [self.facts[int(c.metadata['id'])] for c in closest]
         return closest
-    
     
     def load(self) -> None:
         entities_file = os.path.join(self.persist_dir, "entities.json")
