@@ -54,34 +54,10 @@ entity_selection_prompt = PromptTemplate.from_template(
     Do you think the entity "{entity}" is directly and explicitly involved in the fact stated above? You should answer yes only if the entity is very explicitly present in the sentence that states the fact. Please answer Yes or No.
     """
 )
-#     """
-#     Here is a fact: {fact}. It has been extracted in a text of the following type: {context}.
-    
-#     Among the following entities, which are involved in the fact stated above? Please repeat those you want to keep in a list below. If none of the entities is involved in the fact stated above, please answer None. It is important that you only keep entities among those listed below, and only if they are directly mentioned in the fact stated above (although they may be mentioned in a different form).
-    
-#     {choices}
-#     """
-# )
 
 entity_equivalence_prompt = PromptTemplate.from_template(
     """Are the entities {entity} and {other} equivalent? Please answer Yes or No."""
 )
-
-
-# entity_equivalence_prompt = PromptTemplate.from_template(
-#     """Here is a fact: {fact} It has been extracted in a text of the following type: {context}
-    
-#     Among the following entities, is there one that is equivalent to the entity {entity} involved in the fact stated above? Please answer with the name of the equivalent entity, or None if there is no equivalent entity.
-    
-#     Target entity: {entity}
-    
-#     List of candidates:
-#     {choices}
-#     - None of the above
-    
-#     Equivalent entity or None: """
-# )
-    
 
 new_entities_prompt = PromptTemplate.from_template(
     """

@@ -16,8 +16,8 @@ CTX_SIZE = 5000
 MODEL = 'mistral'
 
 if __name__ == "__main__":
-    query = sys.argv[1]
-    db_location = sys.argv[2]
+    db_location = sys.argv[1]
+    query = sys.argv[2]
     loader = WikipediaLoader(query=query, doc_content_chars_max=1000000)
     docs = loader.load()
     llm = Ollama(model=MODEL)
@@ -64,7 +64,7 @@ if __name__ == "__main__":
                 related_facts = db.get_closest_facts(fact)
                 skip_fact = False
                 for related in related_facts:
-                    if nlp_models.detect_entailment(fact, related.text):
+                    if nlp_models.detect_entailment(related.text, fact):
                         print('Identified an overlapping fact in the database: ', related.text)
                         prompt = confrontation_prompt.format(
                             fact=fact, 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
                 # Prompt to extract entities in zero-shot fashion
                 extraction_prompt = entity_extraction_prompt.format(fact=fact, context=ctx)
                 ans = llm.invoke(extraction_prompt)
-                entities_extracted = parse_bullet_points(ans, only_bullets=True)
+                entities_extracted = parse_bullet_points(ans, only_first_bullets=True)
                 print('Extracted entities:')
                 print(entities_extracted)
                 
@@ -119,19 +119,6 @@ if __name__ == "__main__":
                         db.add_entity(name=entity)
                         kept_entities.add(entity)
                         print('Entity', entity, 'added to the database.')
-                    
-                        
-                # Find other entities that the model could have missed through sim search
-                # tmp_entities = db.get_closest_entities(fact, k=10)
-                # tmp_entities = [x for x in tmp_entities if x.name not in kept_entities]
-                # print(tmp_entities)
-                # # Finally, let the model decide which entities are really involved
-                # for entity in tmp_entities:
-                #     prompt = entity_selection_prompt.format(fact=fact, context=ctx, entity=entity)
-                #     ans = llm.invoke(prompt).strip()
-                #     if ans.lower().strip().startswith('yes'):
-                #         kept_entities.add(entity.name)
-                #         print('Also adding entity', entity)
                     
                 print('Final entities:')
                 print(list(kept_entities))
