@@ -2,7 +2,7 @@
 
 This is a prototype of (still experimental) project of a hybrid database system that can serve as a robust memory of facts for LLMs that can easily be inspected by humans. This projects starts from the premise that current methods to use LLMs on proprietary sets of unstructured text, which are mainly RAG and fine-tuning, fall short of providing a way for the LLM to synthesize the information found in these texts in a format that allows easy retrieval both for the LLM and for humans. The solution we propose here is to build a hybrid graph-vector database, structured both as a knowledge graph, with entities and relations between entities (here, any natural language sentence can be a relation), and as a vector store, in which relations can be retrieved from their embeddings with fast vector similarity search (powered by ChromaDB).
 
-![Figure 1](assets/hippofig.pdf)
+![Figure 1](assets/hippofig.pdf?raw=True)
 
 More information can be found in the abstract and poster available in `assets/`
 
