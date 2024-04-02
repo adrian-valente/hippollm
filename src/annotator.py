@@ -1,5 +1,3 @@
-from datetime import datetime
-import sys
 from typing import List, Optional
 
 from langchain_core.documents import Document
@@ -149,33 +147,33 @@ class Annotator:
             self.db.add_fact(text=fact, entities=list(kept_entities), source=source)
         
         
-        def annotate(self, doc: Document) -> None:
-            """Extract facts and entities from a document and save them to the database."""
-            print("Processing document:", doc.metadata['title'])
-            print("Length:", len(doc.page_content))
-            content = doc.page_content
-            
-            # Contextualization
-            prompt = contextualization_prompt.format(text=content[:min(CTX_SIZE, len(content))])
-            ctx = first_sentence(self.llm.invoke(prompt))
-            
-            # Create source object
-            source = storage.Source(
-                name=doc.metadata['title'],
-                description=ctx,
-                url=doc.metadata['source'],
-                date=None,
-                position=(0, len(content))
-            )
-            
-            # Loop through chunks of text
-            for i in range(0, len(content), CHUNK_SIZE):
-                chunk = content[i: min(i+CHUNK_SIZE, len(content))]
-                source = source.copy_with_new_position((i, min(i+CHUNK_SIZE, len(content))))
-                self._fact_extractor(chunk, ctx, source)
-            
-            # Save to disk
-            self.db.save()
+    def annotate(self, doc: Document) -> None:
+        """Extract facts and entities from a document and save them to the database."""
+        print("Processing document:", doc.metadata['title'])
+        print("Length:", len(doc.page_content))
+        content = doc.page_content
+        
+        # Contextualization
+        prompt = contextualization_prompt.format(text=content[:min(CTX_SIZE, len(content))])
+        ctx = first_sentence(self.llm.invoke(prompt))
+        
+        # Create source object
+        source = storage.Source(
+            name=doc.metadata['title'],
+            description=ctx,
+            url=doc.metadata['source'],
+            date=None,
+            position=(0, len(content))
+        )
+        
+        # Loop through chunks of text
+        for i in range(0, len(content), CHUNK_SIZE):
+            chunk = content[i: min(i+CHUNK_SIZE, len(content))]
+            source = source.copy_with_new_position((i, min(i+CHUNK_SIZE, len(content))))
+            self._fact_extractor(chunk, ctx, source)
+        
+        # Save to disk
+        self.db.save()
         
         
         

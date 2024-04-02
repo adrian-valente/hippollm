@@ -1,4 +1,3 @@
-import numpy as np
 from sentence_transformers import CrossEncoder
 from typing import List, Optional
 

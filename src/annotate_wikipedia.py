@@ -23,4 +23,4 @@ if __name__ == '__main__':
     
     doc = load_wikipedia(args.query)
     annotator = Annotator(db_location=args.db, verbose=int(args.verbose))
-    annotator.annotate_document(doc)
+    annotator.annotate(doc)
