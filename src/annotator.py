@@ -26,7 +26,7 @@ class Annotator:
         # Load models
         self.nlp_models = NLPModels()
         self.llm = Ollama(model=MODEL)
-        self.embedding_model = SentenceTransformerEmbeddings(model_name="")
+        self.embedding_model = SentenceTransformerEmbeddings(model_name=EMBEDDINGS_MODEL)
         
         # Load database
         print('Loading database', db_location)
@@ -35,7 +35,7 @@ class Annotator:
             persist_dir=self.db_location
         )
         print(f'Loaded database with {len(self.db.entities)} entities and '
-               '{len(self.db.facts)} facts.')
+              f'{len(self.db.facts)} facts.')
         
     
     def _reformulate_fact(self, fact: str, ctx: str, chunk: str) -> str:
@@ -81,13 +81,14 @@ class Annotator:
         
         
     def _find_equivalent_entity(self, entity: str) -> Optional[str]:
+        # First check if there is an exact match in the database
+        if (match := self.db.get_entity(entity)) is not None:
+            return match
+        
+        # Otherwise, look for the closest entities in the database
         tmp_entities = self.db.get_closest_entities(entity, k=10)
         if self.verbosity > 0:
             print('Top candidate entities:', tmp_entities)
-            
-        # First check if there is an exact match
-        if entity in [e.name for e in tmp_entities]:
-            return [e for e in tmp_entities if e.name == entity][0]
        
         # TODO: replace with entity linking model?
         # Then look for equivalent entity with NLI model + prompt
@@ -132,17 +133,18 @@ class Annotator:
                 top_match = self._find_equivalent_entity(entity)
                 # Keep track of equivalent entities, and add new ones to the database
                 if top_match is not None:
-                    self.kept_entities.add(top_match.name)
+                    kept_entities.add(top_match.name)
                     if self.verbosity > 0:
                         print('Entity', entity, 'considered equivalent to', top_match)
                 else:
                     self.db.add_entity(name=entity)
-                    self.kept_entities.add(entity)
+                    kept_entities.add(entity)
                     if self.verbosity > 0:
                         print('Entity', entity, 'added to the database.') 
-                
-            print('Final entities:')
-            print(list(kept_entities))
+            
+            if self.verbosity > 0:
+                print('Final entities:')
+                print(list(kept_entities))
             # Now add the fact to the database
             self.db.add_fact(text=fact, entities=list(kept_entities), source=source)
         

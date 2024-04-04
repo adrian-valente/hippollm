@@ -116,7 +116,6 @@ class EntityStore:
         
     def get_entity(self, name: str) -> Entity:
         if name not in self.entities:
-            print(f"Entity {name} does not exist in the store.")
             return None
         return self.entities[name]
     
