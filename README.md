@@ -6,6 +6,20 @@ This is a prototype of (still experimental) project of a hybrid database system 
 
 More information can be found in the [abstract](assets/abstract_hycha24_1.pdf) and [poster](assets/poster.pdf).
 
+## Installation
+To install the program, clone the repository and create the corresponding conda environment:
+
+```sh
+conda env create -f environment.yml
+```
+
+The system uses ollama to run the LLM efficiently, and in this case Mistral 7B is used, so ollama should download mistral weights and then be launched in the background, for example with:
+```sh
+ollama pull mistral
+ollama serve&
+```
+(where you then have to use the process id if you want to stop the Ollama server). That should be sufficient so that invocations of mistral from the code work! 
+
 ## Usage
 This system works in two steps: in annotation mode, facts are extracted from unstructured text data and embedded in the hybrid memory system. In retrieval mode, a question can be asked, the most relevant facts in the memory will be retrieved and displayed, and an answer can then be generated using these facts as a source of knowledge.
 
