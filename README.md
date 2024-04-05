@@ -7,10 +7,12 @@ This is a prototype of (still experimental) project of a hybrid database system 
 More information can be found in the [abstract](assets/abstract_hycha24_1.pdf) and [poster](assets/poster.pdf).
 
 ## Installation
-To install the program, clone the repository and create the corresponding conda environment:
+To install the program, clone the repository and create the corresponding conda environment, and run the small install script to download the punkt resource for nltk:
 
 ```sh
 conda env create -f environment.yml
+conda activate hippo_env
+bash install.sh
 ```
 
 The system uses ollama to run the LLM efficiently, and in this case Mistral 7B is used, so ollama should download mistral weights and then be launched in the background, for example with:
@@ -38,7 +40,7 @@ You can also add your own text files (for example in .txt format). Note that you
 Additional scripts to interact with a database directly (notably visually) will soon be added.
 
 ## Experiments
-For the moment I have experimented with adding titles and abstracts from wikipedia-en as entities, in particular a subset of approximately 1.5M most visited articles (selected as those mentioned in a pageviews dump of a single day). The database with those entities added can be created with the script bootstrap_wikipedia.py, for example:
+For the moment I have experimented with adding titles and abstracts from wikipedia-en as entities, in particular a subset of approximately 1.5M most visited articles (selected as those mentioned in a pageviews dump of a single day). The database with those entities added can be created with the script bootstrap_wikipedia.py, and it should take about 6 hours to embed all of them with a consumer GPU, with the command for example:
 ```
 python boostrap_wikipedia.py --db_loc wikidb --dump_loc tmp
 ```
