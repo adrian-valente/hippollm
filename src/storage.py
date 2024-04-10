@@ -6,6 +6,9 @@ import orjson
 from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import Chroma
 
+from helpers import is_yes
+
+INTERACTIVE = True  # Set to False for automated tests
 
 @dataclass
 class Entity:
@@ -57,16 +60,21 @@ class EntityStore:
     chroma_entities: Chroma
     chroma_facts: Chroma
     
-    def __init__(self, embedding_model: Embeddings, persist_dir: Optional[os.PathLike] = None):
+    def __init__(
+        self, 
+        embedding_model: Embeddings, 
+        persist_dir: Optional[os.PathLike] = None,
+        ) -> None:
         self.entities = {}
         self.facts = []
         self.embedding_model = embedding_model
+        self._modified = False
         if persist_dir:
             self.persist_dir = persist_dir
             if not os.path.exists(persist_dir):
                 os.makedirs(persist_dir)
             else:
-                self.load()
+                self._load()
             entities_persist_dir = os.path.join(persist_dir, "entities")
             facts_persist_dir = os.path.join(persist_dir, "facts")
         else:
@@ -77,31 +85,53 @@ class EntityStore:
         self.chroma_entities = Chroma(
             embedding_function=embedding_model,
             persist_directory=entities_persist_dir,
+            collection_name='entities'
         )
         self.chroma_facts = Chroma(
             embedding_function=embedding_model,
             persist_directory=facts_persist_dir,
+            collection_name='facts'
         )
         self._check_integrity()
    
-    def _check_integrity(self) -> None:
-        if len(self.entities) != self.chroma_entities._collection.count():
-            raise Exception(
-                'Graph storage seems unconsistent with the number of entities in the '
-                'Chroma DB, the DB was probably not saved after receiving some updates. '
-                'A correction routine will need to be run.'
-            )
-        if len(self.facts) != self.chroma_facts._collection.count():
-            raise Exception(
-                'Graph storage seems unconsistent with the number of facts in the '
-                'Chroma DB, the DB was probably not saved after receiving some updates. '
-                'A correction routine will need to be run.'
-            )
+    def _check_integrity(self) -> bool:
+        """Check that the DB is not corrputed (graph and vector components are consistent)."""
+        if len(self.entities) != self.chroma_entities._collection.count() or \
+                len(self.facts) != self.chroma_facts._collection.count():
+            print('The database appears corrupted: some entities or facts in the ChromaDB'
+                  ' are missing in the graph DB. It was probably not saved when last used.') 
+            if INTERACTIVE:
+                inp = input('Do you want to restore integrity by removing these elements? (y/n)')
+                if is_yes(inp):
+                    self._restore_integrity()
+                    return True
+            else:
+                return False
+        return True
+            
+            
+    def _restore_integrity(self) -> None:
+        """Remove elements in the ChromaDB that are not in the entities or facts list."""
+        entities_in_chroma = self.chroma_entities._collection.get(include=[])['ids']
+        to_delete = []
+        for k in entities_in_chroma:
+            if k not in self.entities:
+                to_delete.append(k)
+        self.chroma_entities.delete(to_delete)
+        
+        # We assume that facts have not been deleted, but some facts may have been added
+        # to the ChromaDB and not saved in the json. Hence, only facts at the end will be
+        # deleted.
+        chroma_len = self.chroma_facts._collection.count()
+        if len(self.facts) < chroma_len:
+            idxes = [str(i) for i in range(len(self.facts), chroma_len)]
+            self.chroma_facts.delete(idxes)
 
     def add_entity(self, 
                    name: str,
                    description: Optional[str] = '',
                    ) -> None:
+        """Add entity to the DB."""
         if name in self.entities:
             print(f"Entity {name} already exists in the store.")
             return
@@ -113,8 +143,10 @@ class EntityStore:
         )
         self.entities[name] = entity
         self.chroma_entities.add_texts([desc], ids=[name], metadatas=[{'name': name}])
+        self._modified = True
         
     def get_entity(self, name: str) -> Entity:
+        """Get entity by name."""
         if name not in self.entities:
             return None
         return self.entities[name]
@@ -124,6 +156,7 @@ class EntityStore:
                  entities: List[str],
                  source: Source
                  ) -> None:
+        """Add fact to the DB."""
         fact = Fact(
             text=text,
             entities=entities,
@@ -139,11 +172,15 @@ class EntityStore:
         self.facts.append(fact)
         for entity in entities:
             self.entities[entity].facts.append(len(self.facts) - 1)
+        self._modified = True
         
     def add_fact_source(self, fact_id: int, source: Source) -> None:
+        """Add a source to a fact."""
         self.facts[fact_id].sources.append(source)
+        self._modified = True
     
     def get_closest_entities(self, query: str, k: int = 5) -> List[Entity]:
+        """Get the k closest entities to a query."""
         emb = self.embedding_model.embed_query(query)
         try:
             closest = self.chroma_entities.similarity_search_by_vector(emb, k=k)
@@ -154,6 +191,7 @@ class EntityStore:
         return closest
     
     def get_closest_facts(self, query: str, k: int = 5) -> List[Fact]:
+        """Get the k closest facts to a query."""
         emb = self.embedding_model.embed_query(query)
         k = min(k, len(self.facts))
         try:
@@ -164,7 +202,11 @@ class EntityStore:
         closest = [self.facts[int(c.metadata['id'])] for c in closest]
         return closest
     
-    def load(self) -> None:
+    def _load(self) -> None:
+        """
+        Load the entities and facts from the persist_dir.
+        Implicitly called at initialization if persist_dir is set.
+        """
         entities_file = os.path.join(self.persist_dir, "entities.json")
         if os.path.exists(entities_file):
             with open(entities_file, "rb") as f:
@@ -178,10 +220,14 @@ class EntityStore:
                 facts_bytes = f.read()
                 facts = orjson.loads(facts_bytes)
                 for f in facts:
-                    f['sources'] = [Source(**s) for s in f['sources']]
+                    print(f)
+                    if 'sources' in f and f['sources']:
+                        f['sources'] = [Source(**s) for s in f['sources'] if s]
                     self.facts.append(Fact(**f))
+        self._modified = False
     
     def save(self) -> None:
+        """Save the entities and facts to the persist_dir."""
         if self.persist_dir is None:
             print("Cannot save if no persist_dir is set at initialization.")
             return
@@ -191,6 +237,16 @@ class EntityStore:
         with open(os.path.join(self.persist_dir, "facts.json"), "wb") as f:
             facts_bytes = orjson.dumps(self.facts)
             f.write(facts_bytes)
+        self._modified = False
+            
+    def __del__(self) -> None:
+        if self.persist_dir and self._modified and INTERACTIVE:
+            inp = input("The database has been modified. Do you want to save it? (y/n)")
+            if is_yes(inp):
+                self.save()
+        elif not self.persist_dir:  # fixes an issue with ephemeral DBs in chroma
+            self.chroma_entities.delete_collection()
+            self.chroma_facts.delete_collection()
         
 
         

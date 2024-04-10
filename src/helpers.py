@@ -2,6 +2,11 @@ import nltk
 from typing import List
 
 
+def is_yes(answer: str) -> bool:
+    """Check if an answer is a yes"""
+    return answer.strip().lower().startswith('y')
+
+
 def first_sentence(text: str) -> str:
     """extract first sentence of text"""
     sentences = nltk.sent_tokenize(text)
