@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Optional
 import os
 import orjson
+
+from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import Chroma
 
@@ -14,7 +16,7 @@ INTERACTIVE = True  # Set to False for automated tests
 class Entity:
     name: str
     description: str
-    facts: List[int]  # List of indices of facts in the facts list
+    facts: list[int]  # List of indices of facts in the facts list
     
     def __repr__(self) -> str:
         if self.description:
@@ -29,9 +31,9 @@ class Source:
     description: str
     url: str
     date: datetime
-    position: Tuple[int, int]
+    position: tuple[int, int]
     
-    def copy_with_new_position(self, position: Tuple[int, int]) -> 'Source':
+    def copy_with_new_position(self, position: tuple[int, int]) -> 'Source':
         return Source(
             name=self.name,
             description=self.description,
@@ -40,12 +42,25 @@ class Source:
             position=position
         )
         
+    @staticmethod
+    def from_document(doc: Document, ctx: str = '') -> 'Source':
+        title = doc.metadata.get('title', '')
+        url = doc.metadata.get('source', '')
+        
+        return Source(
+            name=title,
+            description=ctx,
+            url=url,
+            date=None,
+            position=(0, len(doc.page_content))
+        )
+        
 
 @dataclass
 class Fact:
     text: str
-    entities: List[str]
-    sources: List[Source]
+    entities: list[str]
+    sources: list[Source]
     confidence: float          # Not used for the moment
     id: int                    # Index of the fact in the facts list
     
@@ -55,7 +70,7 @@ class Fact:
 
 class EntityStore:
     entities: dict[str, Entity]
-    facts: List[Fact]
+    facts: list[Fact]
     embedding_model: Embeddings
     chroma_entities: Chroma
     chroma_facts: Chroma
@@ -153,7 +168,7 @@ class EntityStore:
     
     def add_fact(self,
                  text: str,
-                 entities: List[str],
+                 entities: list[str],
                  source: Source
                  ) -> None:
         """Add fact to the DB."""
@@ -179,7 +194,7 @@ class EntityStore:
         self.facts[fact_id].sources.append(source)
         self._modified = True
     
-    def get_closest_entities(self, query: str, k: int = 5) -> List[Entity]:
+    def get_closest_entities(self, query: str, k: int = 5) -> list[Entity]:
         """Get the k closest entities to a query."""
         emb = self.embedding_model.embed_query(query)
         try:
@@ -190,7 +205,7 @@ class EntityStore:
         closest = [self.entities[c.metadata['name']] for c in closest]
         return closest
     
-    def get_closest_facts(self, query: str, k: int = 5) -> List[Fact]:
+    def get_closest_facts(self, query: str, k: int = 5) -> list[Fact]:
         """Get the k closest facts to a query."""
         emb = self.embedding_model.embed_query(query)
         k = min(k, len(self.facts))
@@ -220,7 +235,6 @@ class EntityStore:
                 facts_bytes = f.read()
                 facts = orjson.loads(facts_bytes)
                 for f in facts:
-                    print(f)
                     if 'sources' in f and f['sources']:
                         f['sources'] = [Source(**s) for s in f['sources'] if s]
                     self.facts.append(Fact(**f))

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from langchain_core.documents import Document
 from langchain_community.llms import Ollama
@@ -8,31 +8,35 @@ from helpers import *
 from prompts import *
 import storage
 from nlp_additional import NLPModels
-
-
-# General parameters
-CHUNK_SIZE = 1000   # size of chunks in which the text is split
-CTX_SIZE = 5000     # size of the text beginning used for contextualization
-MODEL = 'mistral'   # Ollama name for the model (this is the 7B)
-EMBEDDINGS_MODEL = 'all-MiniLM-L6-v2'  # sentence_transformers model for embeddings
+from splitters import get_splitter, TSplitStrategyLiteral
 
 
 class Annotator:
     
-    def __init__(self, db_location: str, verbosity: int = 1) -> None:
-        self.db_location = db_location
+    def __init__(self, 
+                 db_location: Optional[str] = None, 
+                 verbosity: int = 1,
+                 llm_model: str = 'mistral',
+                 embedding_model: str = 'all-MiniLM-L6-v2',
+                 split_strategy: TSplitStrategyLiteral = 'recursive',
+                 chunk_size: int = 1000,
+                 ctx_size: int = 5000) -> None:
         self.verbosity = verbosity
+        self.ctx_size = ctx_size
         
         # Load models
         self.nlp_models = NLPModels()
-        self.llm = Ollama(model=MODEL)
-        self.embedding_model = SentenceTransformerEmbeddings(model_name=EMBEDDINGS_MODEL)
+        self.llm = Ollama(model=llm_model)
+        self.embedding_model = SentenceTransformerEmbeddings(model_name=embedding_model)
+        
+        # Text splitter
+        self.splitter = get_splitter(split_strategy, chunk_size)
         
         # Load database
         print('Loading database', db_location)
         self.db = storage.EntityStore(
             embedding_model=self.embedding_model, 
-            persist_dir=self.db_location
+            persist_dir=db_location
         )
         print(f'Loaded database with {len(self.db.entities)} entities and '
               f'{len(self.db.facts)} facts.')
@@ -70,7 +74,7 @@ class Annotator:
         return False
     
     
-    def _extract_entities(self, fact: str, ctx: str) -> List[str]:
+    def _extract_entities(self, fact: str, ctx: str) -> list[str]:
         extraction_prompt = entity_extraction_prompt.format(fact=fact, context=ctx)
         ans = self.llm.invoke(extraction_prompt)
         entities = parse_bullet_points(ans, only_first_bullets=True)
@@ -151,28 +155,22 @@ class Annotator:
         
     def annotate(self, doc: Document) -> None:
         """Extract facts and entities from a document and save them to the database."""
-        print("Processing document:", doc.metadata['title'])
+        print("Processing document:", doc.metadata.get('title', 'Untitled'))
         print("Length:", len(doc.page_content))
         content = doc.page_content
         
         # Contextualization
-        prompt = contextualization_prompt.format(text=content[:min(CTX_SIZE, len(content))])
+        prompt = contextualization_prompt.format(text=content[:min(self.ctx_size, len(content))])
         ctx = first_sentence(self.llm.invoke(prompt))
         
         # Create source object
-        source = storage.Source(
-            name=doc.metadata['title'],
-            description=ctx,
-            url=doc.metadata['source'],
-            date=None,
-            position=(0, len(content))
-        )
+        source = storage.Source.from_document(doc, ctx)
         
         # Loop through chunks of text
-        for i in range(0, len(content), CHUNK_SIZE):
-            chunk = content[i: min(i+CHUNK_SIZE, len(content))]
-            source = source.copy_with_new_position((i, min(i+CHUNK_SIZE, len(content))))
-            self._fact_extractor(chunk, ctx, source)
+        chunks = self.splitter.split(content)
+        for chunk in chunks:
+            source = source.copy_with_new_position(chunk.pos)
+            self._fact_extractor(chunk.text, ctx, source)
         
         # Save to disk
         self.db.save()

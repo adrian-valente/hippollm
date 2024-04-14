@@ -55,11 +55,9 @@ def test_save_load():
         emb_model = FakeEmbeddings(size=740)
         db = EntityStore(embedding_model=emb_model, persist_dir=tmpdir)
         add_some_fake_facts(db)
-        print(db.facts)
         db.save()
         del db
         db2 = EntityStore(embedding_model=emb_model, persist_dir=tmpdir)
-        print(db2.facts)
         assert len(db2.entities) == 4
         assert len(db2.facts) == 2
         assert db2.entities["Paris"].name == "Paris"

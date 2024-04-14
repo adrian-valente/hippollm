@@ -13,7 +13,7 @@ def load_wikipedia(query: str) -> Document:
 
 def load_text(location: os.PathLike) -> Document:
     """Load a text document from a file."""
-    loader = TextLoader(location=location)
+    loader = TextLoader(file_path=location)
     docs = loader.load()
     return docs[0]
     

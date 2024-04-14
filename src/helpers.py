@@ -1,5 +1,4 @@
 import nltk
-from typing import List
 
 
 def is_yes(answer: str) -> bool:
@@ -13,7 +12,7 @@ def first_sentence(text: str) -> str:
     return sentences[0].strip() if sentences else text.strip()
 
 
-def parse_bullet_points(text: str, only_first_bullets: bool = False) -> List[str]:
+def parse_bullet_points(text: str, only_first_bullets: bool = False) -> list[str]:
     """extract items in lines corresponding to bullet points.
     If only_first_bullets is True, keep only the first group of lines starting with bullets"""
     if text.strip().startswith("None"):
@@ -37,7 +36,7 @@ def itemize_list(items):
     return "\n".join(["- " + str(x) for x in items])
 
 
-def choice_selection(answer: str, choices: List[str]) -> str:
+def choice_selection(answer: str, choices: list[str]) -> str:
     """See if an answer corresponds to one among a list of choices, even if the text contains
     more information."""
     answer = answer.strip().lower()

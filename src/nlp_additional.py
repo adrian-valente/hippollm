@@ -1,5 +1,5 @@
 from sentence_transformers import CrossEncoder
-from typing import List, Optional
+from typing import Optional
 
 class NLPModels:
     """
@@ -21,7 +21,7 @@ class NLPModels:
         else:
             return False
         
-    def top_entailment(self, item: str, others: List[str]) -> Optional[int]:
+    def top_entailment(self, item: str, others: list[str]) -> Optional[int]:
         """Return the index of the element in others that most likely entails item."""
         scores = self.entailment_model.predict([(other, item) for other in others])
         do_entail = [scores[i].argmax() == 1 for i in range(len(others))]
