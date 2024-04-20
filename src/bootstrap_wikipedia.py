@@ -82,32 +82,6 @@ async def get_descriptions_async(titles, batch_size=50):
         return {k: v for d in results for k, v in d.items()}
 
 
-def get_descriptions(titles, batch_size=50):
-    api_url = 'https://en.wikipedia.org/w/api.php'
-    
-    def get_description_batch(titles):
-        titles_fmt = '|'.join(titles)
-        params = {
-            'action': 'query',
-            'format': 'json',
-            'titles': titles_fmt,
-            'prop': 'description',
-        }
-        response = requests.get(api_url, params=params).json()
-        elts = response['query']['pages']
-        titles_descs = {
-            v['title']: v['description']
-            for k, v in elts.items() 
-            if 'missing' not in v and 'description' in v
-        }
-        return titles_descs
-    
-    results = []
-    for i in range(0, len(titles), batch_size):
-        results.append(get_description_batch(titles[i:i+batch_size]))
-    return {k: v for d in results for k, v in d.items()}
-
-
 def load_and_parse_pageviews(datetime):
     date, time = datetime
     file_id = f'pageviews-{date.strftime("%Y%m%d")}-{time:02d}0000'
