@@ -11,7 +11,7 @@ contextualization_prompt = PromptTemplate.from_template(
 
 annotation_prompt = PromptTemplate.from_template(
     """Here is an extract of a text of the following type: {context}
-    Write simple statements summarizing all the facts stated in the following text. Make each statement as atomic as possible, and keeping the sentences as concise as possible. Extract only those facts that contain general knowledge, and not specificities of this text. Make sure each fact can be understood by itself without further context. Here is the text:
+    You are a knowledge annotator that extracts standalone facts from text. Your task is to write simple statements summarizing all the facts stated in the following text. Each statement should be one single sentence, containing an atomic fact, and as concise as possible. Extract only those facts that contain general knowledge, and not anecdotal information nor opinions or feelings. Make sure each fact can be understood by itself without further context. Make sure all the information necessary to understand a fact is contained in its sentence, and that no fact contains external reference. Here is the text:
     {text}
     
     Facts:
@@ -27,7 +27,7 @@ reformulation_prompt = PromptTemplate.from_template(
     
     {text}
     
-    Please reformulate the fact so that it can be understood without the context of the text, without changing its meaning. In particular, remove all pronouns and references to elements not in the fact. If the fact is already general enough, keep it as it is. DO NOT ADD ANY INFORMATION, STICK TO THE FACT AS IT IS STATED. Make sure the reformulated fact is atomic and as concise as possible.
+    Please reformulate the fact so that it can be understood without the context of the text, without changing its meaning. In particular, remove all pronouns and references to elements not in the fact. If the fact is already general enough, keep it as it is. DO NOT ADD ANY INFORMATION, STICK TO THE CONTENT OF THE STATED FACT. Make sure the reformulated fact is atomic and as concise as possible.
     
     Reformulated fact: """
 )

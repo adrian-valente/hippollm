@@ -11,4 +11,6 @@ dependencies:
   - sentence-transformers=2.5.1
   - wikipedia=1.4.0
   # dev
+  - pandas
   - pytest=8.1.1
+  - groq

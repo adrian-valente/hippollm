@@ -23,6 +23,8 @@ from time import time
 
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 
+import sys
+sys.path.insert(0, '../src/')
 import storage
 
 
