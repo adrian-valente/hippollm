@@ -88,30 +88,32 @@ class Annotator:
         return entities
         
         
-    def _find_equivalent_entity(self, entity: str) -> Optional[str]:
-        # First check if there is an exact match in the database
-        if (match := self.db.get_entity(entity)) is not None:
-            return match
-        
-        # Otherwise, look for the closest entities in the database
+    def _find_equivalent_entity(self, entity: str, fact: str) -> Optional[str]:
+        # Look for the closest entities in the database
         tmp_entities = self.db.get_closest_entities(entity, k=10)
-        if self.verbosity > 0:
-            print('Top candidate entities:', tmp_entities)
+        
+        # Classify matches with NLI model
+        top_matches_i, sc = self.nlp_models.entailment_classify(
+            entity, 
+            [e.name for e in tmp_entities]
+        )
+        top_matches = [tmp_entities[i] for i in top_matches_i]
+        
+        # Also look if there is an exact match in the database
+        if (match := self.db.get_entity(entity)) is not None:
+            top_matches.insert(0, match)
+            log_action('db.entity_exact_match', entity, match)
        
         # TODO: replace with entity linking model?
         # Then look for equivalent entity with NLI model + prompt
-        elif tmp_entities:
-            top_match = self.nlp_models.top_entailment(entity, [e.name for e in tmp_entities])
-            if top_match is not None:
-                other = tmp_entities[top_match]
-                prompt = entity_equivalence_prompt.format(entity=entity, other=other.name)
+        if tmp_entities:
+            top_matches, sc = self.nlp_models.entailment_classify(entity, [e.name for e in tmp_entities])
+            for match in top_matches:
+                prompt = entity_equivalence_prompt.format(entity=entity, other=match.name)
                 res = self.llm.invoke(prompt, optional_grammar=grammar_yn, max_tokens=3)
                 if res.lower().strip().startswith('yes'):
-                    return other
-                else:
-                    return None
-        else:
-            return None
+                    return match
+        return None
         
         
     def _fact_extractor(self, chunk: str, ctx: str, source: storage.Source) -> None:
@@ -138,7 +140,7 @@ class Annotator:
             # Find identified entities in the database, or add them if they don't exist
             kept_entities = set()
             for entity in entities_extracted:
-                top_match = self._find_equivalent_entity(entity)
+                top_match = self._find_equivalent_entity(entity, fact)
                 # Keep track of equivalent entities, and add new ones to the database
                 if top_match is not None:
                     kept_entities.add(top_match.name)

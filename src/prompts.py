@@ -56,7 +56,11 @@ entity_selection_prompt = PromptTemplate.from_template(
 )
 
 entity_equivalence_prompt = PromptTemplate.from_template(
-    """Are the entities {entity} and {other} equivalent? Please answer Yes or No."""
+    """We are studying the following fact: {fact} 
+    
+    In our database the entity {other} is already present.
+    
+    Is the entity {entity} in our fact equivalent to the entity {other} in the database? Please answer Yes or No."""
 )
 
 new_entities_prompt = PromptTemplate.from_template(
