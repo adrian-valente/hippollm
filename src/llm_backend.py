@@ -79,7 +79,7 @@ class LlmBackendCpp(LlmBackend):
         
         if self.chat_model:
             messages = [{'role': 'user', 'content': prompt}]
-            if self.system_prompt:
+            if hasattr(self, 'system_prompt'):
                 messages.insert(0, {'role': 'system', 'content': self.system_prompt})
             outp = self.client.create_chat_completion(
                 messages, 
