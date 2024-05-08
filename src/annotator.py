@@ -1,12 +1,12 @@
 from typing import Optional
 
 from langchain_core.documents import Document
-from langchain_community.llms import Ollama
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 
 from grammars import *
 from helpers import *
 from llm_backend import load_llm
+from log_helpers import log_action, log_message
 from prompts import *
 import storage
 from nlp_additional import NLPModels
@@ -17,15 +17,13 @@ class Annotator:
     
     def __init__(self, 
                  db_location: Optional[str] = None, 
-                 verbosity: int = 1,
                  llm_backend: str = 'llama-cpp',
                  llm_model: str = '/home/avalente/models/mistral-7b-instruct-v0.2.Q4_0.gguf',
-                 llm_options: dict = {'n_gpu_layers': -1, 'n_ctx': 5000},
+                 llm_options: dict = {'n_gpu_layers': -1, 'n_ctx': 4096, 'chat_model': True},
                  embedding_model: str = 'all-MiniLM-L6-v2',
                  split_strategy: TSplitStrategyLiteral = 'recursive',
                  chunk_size: int = 1000,
                  ctx_size: int = 5000) -> None:
-        self.verbosity = verbosity
         self.ctx_size = ctx_size
         
         # Load models
@@ -37,44 +35,42 @@ class Annotator:
         self.splitter = get_splitter(split_strategy, chunk_size)
         
         # Load database
-        print('Loading database', db_location)
+        log_message(f'Loading database {db_location}')
         self.db = storage.EntityStore(
             embedding_model=self.embedding_model, 
             persist_dir=db_location
         )
-        print(f'Loaded database with {len(self.db.entities)} entities and '
-              f'{len(self.db.facts)} facts.')
+        log_message(f'Loaded database with {len(self.db.entities)} entities and '
+                    f'{len(self.db.facts)} facts.')
         
     
     def _reformulate_fact(self, fact: str, ctx: str, chunk: str) -> str:
         reform_prompt = reformulation_prompt.format(fact=fact, context=ctx, text=chunk)
-        fact = self.llm.invoke(reform_prompt).strip().split('\n')[0].strip()
-        if self.verbosity:
-            print("After reformulation: ", fact)
+        ans = self.llm.invoke(reform_prompt)
+        fact = ans.strip().split('\n')[0].strip()
+        log_action('llm.reformulation', reform_prompt, ans, fact=fact)
         return fact
     
     
     def _compare_fact(self, fact: str, ctx: str, source: storage.Source) -> bool:
         related_facts = self.db.get_closest_facts(fact)
+        log_action('db.fact_lookup', fact, related_facts)
         for related in related_facts:
-            if self.nlp_models.detect_entailment(related.text, fact):
-                if self.verbosity > 0:
-                    print('Identified an overlapping fact in the database: ', related.text)
+            entails = self.nlp_models.detect_entailment(related.text, fact)
+            log_action('nlp.fact_entailment', [related.text, fact], entails)
+            if entails:
                 prompt = confrontation_prompt.format(
                     fact=fact, 
                     context=ctx, 
                     other_fact=related.text
                 )
                 res = self.llm.invoke(prompt, optional_grammar=grammar_yn, max_tokens=3)
+                log_action('llm.fact_confrontation', prompt, res)
                 if res.lower().strip().startswith('yes'):
                     self.db.add_fact_source(related.id, source)
-                    if self.verbosity > 0:
-                        print('Added source to the fact.')
+                    log_action('db.added_fact', fact, '')
                     return True
-                    # TODO: add fact merging?
-                else:
-                    if self.verbosity > 0:
-                        print('Considered non redundant')
+                    # TODO: add fact merging?           
         return False
     
     
@@ -82,15 +78,14 @@ class Annotator:
         extraction_prompt = entity_extraction_prompt.format(fact=fact, context=ctx)
         ans = self.llm.invoke(extraction_prompt)
         entities = parse_bullet_points(ans, only_first_bullets=True)
-        if self.verbosity > 0:
-            print('Extracted entities:')
-            print(entities)
+        log_action('llm.entity_extraction', extraction_prompt, ans, entities=entities)
         return entities
         
         
     def _find_equivalent_entity(self, entity: str, fact: str) -> Optional[str]:
         # Look for the closest entities in the database
         tmp_entities = self.db.get_closest_entities(entity, k=10)
+        log_action('db.entity_lookup', entity, tmp_entities)
         
         # Classify matches with NLI model
         top_matches_i, sc = self.nlp_models.entailment_classify(
@@ -98,14 +93,17 @@ class Annotator:
             [e.name for e in tmp_entities]
         )
         top_matches = [tmp_entities[i] for i in top_matches_i]
+        log_action('nlp.entity_entailment_class', [entity, tmp_entities], top_matches, scores=sc)
         
         # Also look if there is an exact match in the database
         if (match := self.db.get_entity(entity)) is not None:
             top_matches.insert(0, match)
+            log_action('db.entity_exact_match', entity, match)
        
         for match in top_matches:
             prompt = entity_equivalence_prompt.format(entity=entity, other=str(match), fact=fact)
             res = self.llm.invoke(prompt, optional_grammar=grammar_yn, max_tokens=3)
+            log_action('llm.entity_equivalence', prompt, res)
             if res.lower().strip().startswith('yes'):
                 return match
         return None
@@ -115,12 +113,11 @@ class Annotator:
         """Internal: extract and process facts from a chunk of text"""
         # Extract facts
         prompt = annotation_prompt.format(text=chunk, context=ctx)
-        facts = parse_bullet_points(self.llm.invoke(prompt))
+        ans = self.llm.invoke(prompt)
+        facts = parse_bullet_points(ans)
+        log_action('llm.fact_extraction', prompt, ans, facts=facts)
         
         for fact in facts:
-            if self.verbosity > 0:
-                print('Processing new fact:')
-                print(fact)
             
             # Reformulate
             fact = self._reformulate_fact(fact, ctx, chunk)
@@ -139,30 +136,26 @@ class Annotator:
                 # Keep track of equivalent entities, and add new ones to the database
                 if top_match is not None:
                     kept_entities.add(top_match.name)
-                    if self.verbosity > 0:
-                        print('Entity', entity, 'considered equivalent to', top_match)
                 else:
                     self.db.add_entity(name=entity)
                     kept_entities.add(entity)
-                    if self.verbosity > 0:
-                        print('Entity', entity, 'added to the database.') 
-            
-            if self.verbosity > 0:
-                print('Final entities:')
-                print(list(kept_entities))
+                    log_action('db.add_entity', entity, '')
             # Now add the fact to the database
             self.db.add_fact(text=fact, entities=list(kept_entities), source=source)
+            log_action('db.add_fact', str(fact), '', entities=list(kept_entities))
         
         
     def annotate(self, doc: Document) -> None:
         """Extract facts and entities from a document and save them to the database."""
-        print("Processing document:", doc.metadata.get('title', 'Untitled'))
-        print("Length:", len(doc.page_content))
+        log_message(f"Processing document: {doc.metadata.get('title', 'Untitled')}")
+        log_message(f'Length: {len(doc.page_content)}')
         content = doc.page_content
         
         # Contextualization
         prompt = contextualization_prompt.format(text=content[:min(self.ctx_size, len(content))])
-        ctx = first_sentence(self.llm.invoke(prompt, max_tokens=200, stop=['. ', '.\n']))
+        ans = self.llm.invoke(prompt, max_tokens=200, stop=['. ', '.\n'])
+        ctx = first_sentence(ans)
+        log_action('llm.contextualization', prompt, ans, context=ctx)
         
         # Create source object
         source = storage.Source.from_document(doc, ctx)

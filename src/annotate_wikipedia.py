@@ -16,9 +16,8 @@ if __name__ == '__main__':
         type=str,
         help='The database location'
     )
-    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose mode')
     args = parser.parse_args()
     
     doc = load_wikipedia(args.query)
-    annotator = Annotator(db_location=args.db, verbosity=int(args.verbose))
+    annotator = Annotator(db_location=args.db)
     annotator.annotate(doc)
