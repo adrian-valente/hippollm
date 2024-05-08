@@ -132,7 +132,8 @@ class EntityStore:
         for k in entities_in_chroma:
             if k not in self.entities:
                 to_delete.append(k)
-        self.chroma_entities.delete(to_delete)
+        if len(to_delete) > 0:
+            self.chroma_entities.delete(to_delete)
         
         # We assume that facts have not been deleted, but some facts may have been added
         # to the ChromaDB and not saved in the json. Hence, only facts at the end will be
