@@ -4,7 +4,9 @@ from langchain_core.documents import Document
 from langchain_community.llms import Ollama
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 
+from grammars import *
 from helpers import *
+from llm_backend import load_llm
 from prompts import *
 import storage
 from nlp_additional import NLPModels
@@ -16,7 +18,9 @@ class Annotator:
     def __init__(self, 
                  db_location: Optional[str] = None, 
                  verbosity: int = 1,
-                 llm_model: str = 'mistral',
+                 llm_backend: str = 'llama-cpp',
+                 llm_model: str = '/home/avalente/models/mistral-7b-instruct-v0.2.Q4_0.gguf',
+                 llm_options: dict = {'n_gpu_layers': -1, 'n_ctx': 5000},
                  embedding_model: str = 'all-MiniLM-L6-v2',
                  split_strategy: TSplitStrategyLiteral = 'recursive',
                  chunk_size: int = 1000,
@@ -26,7 +30,7 @@ class Annotator:
         
         # Load models
         self.nlp_models = NLPModels()
-        self.llm = Ollama(model=llm_model)
+        self.llm = load_llm(model=llm_model, backend=llm_backend, **llm_options)
         self.embedding_model = SentenceTransformerEmbeddings(model_name=embedding_model)
         
         # Text splitter
@@ -44,7 +48,7 @@ class Annotator:
     
     def _reformulate_fact(self, fact: str, ctx: str, chunk: str) -> str:
         reform_prompt = reformulation_prompt.format(fact=fact, context=ctx, text=chunk)
-        fact = self.llm.invoke(reform_prompt).split('\n')[0].strip()
+        fact = self.llm.invoke(reform_prompt).strip().split('\n')[0].strip()
         if self.verbosity:
             print("After reformulation: ", fact)
         return fact
@@ -61,7 +65,7 @@ class Annotator:
                     context=ctx, 
                     other_fact=related.text
                 )
-                res = self.llm.invoke(prompt)
+                res = self.llm.invoke(prompt, optional_grammar=grammar_yn, max_tokens=3)
                 if res.lower().strip().startswith('yes'):
                     self.db.add_fact_source(related.id, source)
                     if self.verbosity > 0:
@@ -101,7 +105,7 @@ class Annotator:
             if top_match is not None:
                 other = tmp_entities[top_match]
                 prompt = entity_equivalence_prompt.format(entity=entity, other=other.name)
-                res = self.llm.invoke(prompt)
+                res = self.llm.invoke(prompt, optional_grammar=grammar_yn, max_tokens=3)
                 if res.lower().strip().startswith('yes'):
                     return other
                 else:
@@ -161,7 +165,7 @@ class Annotator:
         
         # Contextualization
         prompt = contextualization_prompt.format(text=content[:min(self.ctx_size, len(content))])
-        ctx = first_sentence(self.llm.invoke(prompt))
+        ctx = first_sentence(self.llm.invoke(prompt, max_tokens=200, stop=['. ', '.\n']))
         
         # Create source object
         source = storage.Source.from_document(doc, ctx)

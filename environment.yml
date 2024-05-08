@@ -5,10 +5,13 @@ channels:
 dependencies:
   - python=3.11
   - chromadb=0.4.24
-  - langchain=0.1.11
+  - langchain=0.1.17
+  - llama-cpp-python=0.2.69
+  - nltk=3.8.1
   - ollama=0.1.17
-  - orjson=3.9.15
-  - sentence-transformers=2.5.1
+  - orjson=3.10.3
+  - sentence-transformers=2.7.0
+  - sentencepiece=0.2.0
   - wikipedia=1.4.0
   # dev
   - pandas
