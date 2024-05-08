@@ -102,17 +102,12 @@ class Annotator:
         # Also look if there is an exact match in the database
         if (match := self.db.get_entity(entity)) is not None:
             top_matches.insert(0, match)
-            log_action('db.entity_exact_match', entity, match)
        
-        # TODO: replace with entity linking model?
-        # Then look for equivalent entity with NLI model + prompt
-        if tmp_entities:
-            top_matches, sc = self.nlp_models.entailment_classify(entity, [e.name for e in tmp_entities])
-            for match in top_matches:
-                prompt = entity_equivalence_prompt.format(entity=entity, other=match.name)
-                res = self.llm.invoke(prompt, optional_grammar=grammar_yn, max_tokens=3)
-                if res.lower().strip().startswith('yes'):
-                    return match
+        for match in top_matches:
+            prompt = entity_equivalence_prompt.format(entity=entity, other=str(match), fact=fact)
+            res = self.llm.invoke(prompt, optional_grammar=grammar_yn, max_tokens=3)
+            if res.lower().strip().startswith('yes'):
+                return match
         return None
         
         
