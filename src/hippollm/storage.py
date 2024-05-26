@@ -8,7 +8,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import Chroma
 
-from helpers import is_yes
+from .helpers import is_yes
 
 INTERACTIVE = True  # Set to False for automated tests
 

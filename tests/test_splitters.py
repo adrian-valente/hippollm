@@ -1,8 +1,6 @@
 import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-from splitters import *
-from loaders import load_text
+from hippollm.splitters import *
+from hippollm.loaders import load_text
 
 from typing import get_args
 

@@ -1,5 +1,5 @@
 from langchain.prompts import PromptTemplate
-from helpers import itemize_list
+from .helpers import itemize_list
 
 
 contextualization_prompt = PromptTemplate.from_template(

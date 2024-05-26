@@ -3,14 +3,14 @@ from typing import Optional
 from langchain_core.documents import Document
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 
-from grammars import *
-from helpers import *
-from llm_backend import load_llm
-from log_helpers import log_action, log_message
-from prompts import *
-import storage
-from nlp_additional import NLPModels
-from splitters import get_splitter, TSplitStrategyLiteral
+from .grammars import *
+from .helpers import *
+from .llm_backend import load_llm
+from .log_helpers import log_action, log_message
+from .prompts import *
+from . import storage
+from .nlp_additional import NLPModels
+from .splitters import get_splitter, TSplitStrategyLiteral
 
 
 class Annotator:

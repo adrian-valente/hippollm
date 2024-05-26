@@ -1,9 +1,7 @@
 import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-from annotator import Annotator
-import storage
-from loaders import load_text
+from hippollm.annotator import Annotator
+from hippollm import storage
+from hippollm.loaders import load_text
 storage.INTERACTIVE = False
 
 assets_path = os.path.join(os.path.dirname(__file__), 'assets')

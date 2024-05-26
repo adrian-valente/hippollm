@@ -1,5 +1,5 @@
 from sentence_transformers import CrossEncoder
-from typing import Optional
+
 
 class NLPModels:
     """

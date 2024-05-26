@@ -1,15 +1,14 @@
 from langchain_community.embeddings import FakeEmbeddings
-from chromadb.config import Settings
 
 from datetime import datetime as dt
 import os
 import sys
 from tempfile import TemporaryDirectory
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-import storage
+from hippollm import storage
 storage.INTERACTIVE = False
 
-from storage import EntityStore, Entity, Fact, Source
+from hippollm.storage import EntityStore, Entity, Fact, Source
 
 
 def add_some_fake_facts(db: EntityStore) -> None:

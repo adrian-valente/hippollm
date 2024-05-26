@@ -1,7 +1,7 @@
 import argparse
 
-from annotator import Annotator
-from loaders import load_wikipedia
+from .annotator import Annotator
+from .loaders import load_wikipedia
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
