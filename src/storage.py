@@ -218,6 +218,67 @@ class EntityStore:
         closest = [self.facts[int(c.metadata['id'])] for c in closest]
         return closest
     
+    def _get_fact_ids_by_entities_union(self, entities: list[str]) -> list[Fact]:
+        """Get ids of facts that involve any of the entities in the list."""
+        facts = set()
+        for e in entities:
+            fs = self.entities[e].facts
+            facts.update(fs)
+        return facts
+    
+    def get_facts_by_entities_union(self, entities: list[str]) -> list[Fact]:
+        """Get facts that involve any of the entities in the list."""
+        facts = self._get_fact_ids_by_entities_union(entities)
+        return [self.facts[f] for f in facts]
+    
+    def _get_fact_ids_by_entities_intersection(self, entities: list[str]) -> list[Fact]:
+        """Get ids of facts that involve all of the entities in the list."""
+        facts = set(self.entities[entities[0]].facts)
+        for e in entities[1:]:
+            fs = self.entities[e].facts
+            facts = facts.intersection(fs)
+        return facts
+    
+    def get_facts_by_entities_intersection(self, entities: list[str]) -> list[Fact]:
+        """Get facts that involve all of the entities in the list."""
+        facts = self._get_fact_ids_by_entities_intersection(entities)
+        return [self.facts[f] for f in facts]
+    
+    def _get_closest_facts_with_ids(
+        self, query: str, ids: list[int], k: int = 5
+        ) -> list[Fact]:
+        """Get the k closest facts to a query that are in the ids list."""
+        if k > len(ids):
+            return [self.facts[f] for f in ids]
+        emb = self.embedding_model.embed_query(query)
+        try:
+            closest = self.chroma_facts.similarity_search_by_vector(
+                emb, 
+                k=k, 
+                filter={
+                    '$or': [{'id': str(f)} for f in ids]
+                }
+            )
+        except Exception as e:
+            print(e)
+            return []
+        closest = [self.facts[int(c.metadata['id'])] for c in closest]
+        return closest
+    
+    def get_closest_facts_with_entities_union(
+        self, query: str, entities: list[str], k: int = 5
+        ) -> list[Fact]:
+        """Get the k closest facts to a query that involve any of the entities."""
+        facts = self._get_fact_ids_by_entities_union(entities)
+        return self._get_closest_facts_with_ids(query, facts, k)
+    
+    def get_closest_facts_with_entities_intersection(
+        self, query: str, entities: list[str], k: int = 5
+        ) -> list[Fact]:
+        """Get the k closest facts to a query that involve all of the entities."""
+        facts = self._get_fact_ids_by_entities_intersection(entities)
+        return self._get_closest_facts_with_ids(query, facts, k)
+    
     def _load(self) -> None:
         """
         Load the entities and facts from the persist_dir.
