@@ -1,6 +1,7 @@
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 import os
 import orjson
 
@@ -166,6 +167,26 @@ class EntityStore:
         if name not in self.entities:
             return None
         return self.entities[name]
+    
+    def get_fact(self, id: int) -> Fact:
+        """Get fact by id."""
+        if id < 0 or id >= len(self.facts):
+            return None
+        return self.facts[id]
+    
+    def get_neighbours(
+        self, name: str, return_facts: bool = False
+    ) -> Union[list[str], list[tuple[str, list[int]]]]:
+        ent = self.get_entity(name)
+        neighbors = defaultdict(list)
+        for f in ent.facts:
+            new = [e for e in self.facts[f].entities if e != name]
+            for n in new:
+                neighbors[n].append(f)
+        if return_facts:
+            return list(neighbors.items())
+        return list(neighbors.keys())
+            
     
     def add_fact(self,
                  text: str,
