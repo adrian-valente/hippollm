@@ -134,7 +134,8 @@ class EntityStore:
             if k not in self.entities:
                 to_delete.append(k)
         if len(to_delete) > 0:
-            self.chroma_entities.delete(to_delete)
+            for batch in range(0, len(to_delete), 1000):
+                self.chroma_entities.delete(to_delete[batch:batch+1000])
         
         # We assume that facts have not been deleted, but some facts may have been added
         # to the ChromaDB and not saved in the json. Hence, only facts at the end will be
@@ -143,6 +144,18 @@ class EntityStore:
         if len(self.facts) < chroma_len:
             idxes = [str(i) for i in range(len(self.facts), chroma_len)]
             self.chroma_facts.delete(idxes)
+            
+    def _prune_lone_entities(self) -> None:
+        """Remove entities without any fact."""
+        to_delete = []
+        for k in list(self.entities.keys()):
+            if len(self.entities[k].facts) == 0:
+                del self.entities[k]
+                to_delete.append(k)
+        if len(to_delete) > 0:
+            for batch in range(0, len(to_delete), 1000):
+                self.chroma_entities.delete(to_delete[batch:batch+1000])
+            print(f"Removed {len(to_delete)} entities.")
 
     def add_entity(self, 
                    name: str,
@@ -323,11 +336,18 @@ class EntityStore:
                     self.facts.append(Fact(**f))
         self._modified = False
     
-    def save(self) -> None:
-        """Save the entities and facts to the persist_dir."""
+    def save(self, prune: bool = False) -> None:
+        """
+        Save the entities and facts to the persist_dir.
+        
+        Args:
+            prune: Remove entities without any fact.
+        """
         if self.persist_dir is None:
             print("Cannot save if no persist_dir is set at initialization.")
             return
+        if prune:
+            self._prune_lone_entities()
         with open(os.path.join(self.persist_dir, "entities.json"), "wb") as f:
             entities_bytes = orjson.dumps(self.entities)
             f.write(entities_bytes)
