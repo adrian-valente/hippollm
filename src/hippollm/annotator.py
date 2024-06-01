@@ -19,12 +19,13 @@ class Annotator:
                  db_location: Optional[str] = None, 
                  llm_backend: str = 'llama-cpp',
                  llm_model: str = '/home/avalente/models/mistral-7b-instruct-v0.2.Q4_0.gguf',
-                 llm_options: dict = {'n_gpu_layers': -1, 'n_ctx': 4096, 'chat_model': True},
+                 llm_options: dict = {},
                  embedding_model: str = 'all-MiniLM-L6-v2',
                  split_strategy: TSplitStrategyLiteral = 'recursive',
                  chunk_size: int = 1000,
                  ctx_size: int = 5000) -> None:
         self.ctx_size = ctx_size
+        # llm_options = {'n_gpu_layers': -1, 'n_ctx': 4096, 'chat_model': True}
         
         # Load models
         self.nlp_models = NLPModels()

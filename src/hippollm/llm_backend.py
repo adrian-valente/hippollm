@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional
 from overrides import override
+import os
 
 
 class LlmBackend(ABC):
@@ -97,12 +98,77 @@ class LlmBackendCpp(LlmBackend):
                 stop=stop
             )
             return outp['choices'][0]['text']
+
+
+class LlmBackendGroq(LlmBackend):
+    
+    def __init__(self, model: str, **params):
+        self.handles_grammars = False
+        self.model = model
+        
+        try:
+            from langchain_groq import ChatGroq
+        except:
+            raise ValueError("You need to install langchain-groq to use this backend: `pip install langchain-groq`")
+        
+        try:
+            groq_api_key = os.environ['GROQ_API_KEY']
+        except KeyError:
+            raise ValueError("You need to setup your Groq API key with `export GROQ_API_KEY=<your-api-key-here>`")
+        
+        try:
+            self.client = ChatGroq(model_name=model, api_key=groq_api_key, **params)
+        except Exception as e:
+            raise ValueError(f"Could not reach Groq API: {e}")
+            
+        
+    def invoke(self, 
+               prompt: str, 
+               optional_grammar: Optional[str] = None,
+               max_tokens: Optional[int] = None,
+               stop: Optional[List[str]] = None,
+               ) -> str:
+        return self.client.invoke(prompt, max_tokens=max_tokens, stop=stop).content
+    
+
+class LlmBackendOpenAI(LlmBackend):
+    
+    def __init__(self, model: str, **params):
+        self.handles_grammars = False
+        self.model = model
+        
+        try:
+            from langchain_openai import ChatOpenAI
+        except:
+            raise ValueError("You need to install langchain_openai to use this backend: `pip install langchain_openai`")
+        
+        try:
+            self.client = ChatOpenAI(model=model, openai_api_key=os.environ['OPENAI_API_KEY'], **params)
+        except KeyError:
+            raise ValueError("You need to setup your OpenAI API key with `export "
+                             "OPENAI_API_KEY=<your-api-key-here>`")
+        except Exception as e:
+            raise ValueError(f"Could not initialize OpenAI with model {model}: {e}")
+        
+    def invoke(self, 
+               prompt: str, 
+               optional_grammar: Optional[str] = None,
+               max_tokens: Optional[int] = None,
+               stop: Optional[List[str]] = None,
+               ) -> str:
+        return self.client.invoke(prompt, max_tokens=max_tokens, stop=stop).content
             
                 
 def load_llm(model: str, backend: str, **params) -> LlmBackend:
+    """Factory function for the LLM backend."""
     if backend == 'ollama':
         return LlmBackendOllama(model, **params)
     elif backend == 'llama-cpp':
         return LlmBackendCpp(model, **params)
+    elif backend == 'groq':
+        return LlmBackendGroq(model, **params)
+    elif backend == 'openai':
+        return LlmBackendOpenAI(model, **params)
     else:
         raise ValueError(f"Unknown LLM backend: {backend}")
+    

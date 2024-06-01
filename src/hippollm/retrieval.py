@@ -3,10 +3,10 @@ import sys
 from langchain_community.llms import Ollama
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 
-from .helpers import *
-from .prompts import *
-from . import storage
-from .nlp_additional import NLPModels
+from hippollm.helpers import *
+from hippollm.prompts import *
+from hippollm import storage
+from hippollm.nlp_additional import NLPModels
 
 MODEL = 'mistral'
 FACTS_K = 10
