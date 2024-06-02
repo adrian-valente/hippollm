@@ -48,6 +48,8 @@ class Annotator:
     def _reformulate_fact(self, fact: str, ctx: str, chunk: str) -> str:
         reform_prompt = reformulation_prompt.format(fact=fact, context=ctx, text=chunk)
         ans = self.llm.invoke(reform_prompt)
+        if ans.strip().startswith("Here is"):
+            ans = ans.split(':', 1)[1].strip()
         fact = ans.strip().split('\n')[0].strip()
         log_action('llm.reformulation', reform_prompt, ans, fact=fact)
         return fact
@@ -69,7 +71,7 @@ class Annotator:
                 log_action('llm.fact_confrontation', prompt, res)
                 if res.lower().strip().startswith('yes'):
                     self.db.add_fact_source(related.id, source)
-                    log_action('db.added_fact', fact, '')
+                    log_action('db.added_fact_source', fact, '')
                     return True
                     # TODO: add fact merging?           
         return False
