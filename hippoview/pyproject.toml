@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hippoview"
+description = "Graphical interface for the hippoLLM graph-vector database."
+authors = [
+    { name = "Adrian Valente", email = "adrian.valente@ens.fr" },
+    { name = "Raphael Sourty" }
+]
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+version = "0.1.0"
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }
+
+[project.scripts]
+hippoview = "hippoview.__main__:main"
