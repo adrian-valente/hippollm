@@ -1,0 +1,1 @@
+grammar_yn = "root ::= (\"Yes\" | \"No\")"

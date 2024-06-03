@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hippollm"
+description = "Hybrid graph-vector database for LLM memory"
+authors = [
+    { name = "Adrian Valente", email = "adrian.valente@ens.fr" }
+]
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dynamic = ["dependencies", "version"]
+
+[project.optional-dependencies]
+dev = ["pytest==8.1.1"]
+ollama = ["ollama==0.1.17"]
+llama-cpp = ["llama-cpp-python==0.2.69"]
+groq = ["langchain-groq==0.1.4"]
+openai = ["langchain-openai==0.1.8"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+version = {attr = "hippollm.__version__"}
+
+[project.scripts]
+annotate_wikipedia = "hippollm:annotate_wikipedia"
+retrieval = "hippollm:retrieval"

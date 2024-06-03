@@ -1,8 +1,6 @@
 import os
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-from loaders import *
-from storage import Source
+from hippollm.loaders import *
+from hippollm.storage import Source
 
 assets_path = os.path.join(os.path.dirname(__file__), 'assets')
 

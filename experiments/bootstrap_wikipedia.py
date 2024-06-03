@@ -1,5 +1,5 @@
 """
-This scripts populates a database with entities corresponding to Wikipedia's articles in english (titles + short descriptaions), keeping only articles that have been seen at least min_views times in the past month (from a set of pageviews dump file), which decreases it to about 600k entities for min_views=100.
+This scripts populates a database with entities corresponding to Wikipedia's articles in english (titles + short descriptaions), keeping only articles that have been seen at least min_views times in the past month (from a set of pageviews dump file), which decreases it to about 568k entities for min_views=100.
 
 
 Usage:

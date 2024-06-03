@@ -1,0 +1,7 @@
+click == 8.0.1
+Flask == 2.0.1
+Flask-Cors == 3.0.10
+requests == 2.32
+pandas >= 1.4.2
+rich == 13.7.1
+Werkzeug == 2.2.2

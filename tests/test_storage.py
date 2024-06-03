@@ -1,15 +1,14 @@
 from langchain_community.embeddings import FakeEmbeddings
-from chromadb.config import Settings
 
 from datetime import datetime as dt
 import os
 import sys
 from tempfile import TemporaryDirectory
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
-import storage
+from hippollm import storage
 storage.INTERACTIVE = False
 
-from storage import EntityStore, Entity, Fact, Source
+from hippollm.storage import EntityStore, Entity, Fact, Source
 
 
 def add_some_fake_facts(db: EntityStore) -> None:
@@ -50,6 +49,7 @@ def test_add_retrieve_facts():
     assert type(closest[0]) == Fact
     
     
+    
 def test_save_load():
     with TemporaryDirectory() as tmpdir:
         emb_model = FakeEmbeddings(size=740)
@@ -78,3 +78,25 @@ def test_restore_integrity():
     assert db.chroma_entities._collection.count() == 1
     assert db._check_integrity() == True
     
+
+def test_hybrid_retrieval_facts():
+    emb_model = FakeEmbeddings(size=740)
+    db = EntityStore(embedding_model=emb_model)
+    add_some_fake_facts(db)
+    closest_paris = db.get_closest_facts_with_entities_union(
+        "Capital", ["Paris"], k=2
+    )
+    assert len(closest_paris) == 1
+    assert closest_paris[0].text == "Paris is the capital of France"
+    closest_paris_or_london = db.get_closest_facts_with_entities_union(
+        "Capital", ["Paris", "London"], k=2
+    )
+    assert len(closest_paris_or_london) == 2
+    closest_paris_and_london = db.get_closest_facts_with_entities_intersection(
+        "Capital", ["Paris", "London"], k=2
+    )
+    assert len(closest_paris_and_london) == 0
+    closest_paris_and_france = db.get_closest_facts_with_entities_intersection(
+        "Capital", ["Paris", "France"], k=2
+    )
+    assert len(closest_paris_and_france) == 1
