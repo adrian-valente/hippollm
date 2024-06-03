@@ -1,0 +1,11 @@
+annotator:
+    db_location: "/Users/avalente/Downloads/wiki_test008"
+    llm_backend: "openai"
+    llm_model: "gpt-3.5-turbo-0613"
+    llm_options: null
+    embedding_model: "all-MiniLM-L6-v2"
+    split_strategy: "recursive"
+    chunk_size: 1000
+    ctx_size: 5000
+query:
+    - "Paris"
