@@ -2,12 +2,14 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Union
+from omegaconf import OmegaConf
 import os
 import orjson
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 
 from .helpers import is_yes
 
@@ -78,13 +80,14 @@ class EntityStore:
     
     def __init__(
         self, 
-        embedding_model: Embeddings, 
+        embedding_model: Optional[Embeddings] = None, 
         persist_dir: Optional[os.PathLike] = None,
+        cfg: Optional[OmegaConf] = None,
         ) -> None:
         self.entities = {}
         self.facts = []
-        self.embedding_model = embedding_model
         self._modified = False
+        
         if persist_dir:
             self.persist_dir = persist_dir
             if not os.path.exists(persist_dir):
@@ -97,6 +100,26 @@ class EntityStore:
             self.persist_dir = None
             entities_persist_dir = None
             facts_persist_dir = None
+            
+        # Source embedding model from config (if necessary in parameters.yaml)
+        if not embedding_model and not cfg:
+            if not persist_dir:
+                raise ValueError("An embedding model is required if no persist_dir is set.")
+            if not os.path.exists(os.path.join(persist_dir, "parameters.yaml")):
+                raise ValueError("No parameters.yaml found in database, "
+                                 "an embedding model needs to be set.")
+            cfg = OmegaConf.load(os.path.join(persist_dir, "parameters.yaml"))
+            
+        if cfg:
+            if 'annotator' in cfg:
+                cfg = cfg.annotator
+            if 'embedding_model' in cfg:
+                embedding_model = SentenceTransformerEmbeddings(
+                    model_name=cfg.embedding_model)
+            else:
+                raise ValueError("No embedding model found in the configuration.")
+        
+        self.embedding_model = embedding_model
             
         self.chroma_entities = Chroma(
             embedding_function=embedding_model,
@@ -336,7 +359,7 @@ class EntityStore:
                     self.facts.append(Fact(**f))
         self._modified = False
     
-    def save(self, prune: bool = False) -> None:
+    def save(self, cfg: Optional[OmegaConf] = None, prune: bool = False) -> None:
         """
         Save the entities and facts to the persist_dir.
         
@@ -354,6 +377,8 @@ class EntityStore:
         with open(os.path.join(self.persist_dir, "facts.json"), "wb") as f:
             facts_bytes = orjson.dumps(self.facts)
             f.write(facts_bytes)
+        if cfg:
+            OmegaConf.save(cfg, os.path.join(self.persist_dir, "parameters.yaml"))
         self._modified = False
             
     def __del__(self) -> None:

@@ -1,0 +1,11 @@
+annotator:
+  llm_backend: "llama-cpp"
+  llm_model: null
+  llm_options: 
+    n_gpu_layers: -1
+    n_ctx: 4096
+    chat_model: true
+  embedding_model: "all-MiniLM-L6-v2"
+  split_strategy: recursive
+  chunk_size: 1000
+  ctx_size: 5000

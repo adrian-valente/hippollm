@@ -1,4 +1,6 @@
 import nltk
+import os
+from pathlib import Path
 import re
 
 
@@ -76,3 +78,7 @@ def choice_selection(answer: str, choices: list[str]) -> str:
         if str(choice).lower() in answer:
             return choice
     return None
+
+
+def getroot() -> os.PathLike:
+    return (Path(__file__).parent / '../..').resolve()

@@ -1,3 +1,5 @@
+from omegaconf import OmegaConf
+import os
 from typing import Optional
 
 from langchain_core.documents import Document
@@ -6,7 +8,7 @@ from langchain_community.embeddings.sentence_transformer import SentenceTransfor
 from .grammars import *
 from .helpers import *
 from .llm_backend import load_llm
-from .log_helpers import log_action, log_message
+from .log_helpers import log_action, log_message, log_setup
 from .prompts import *
 from . import storage
 from .nlp_additional import NLPModels
@@ -14,18 +16,68 @@ from .splitters import get_splitter, TSplitStrategyLiteral
 
 
 class Annotator:
+    _params_to_save = [
+        'llm_backend', 'llm_model', 'llm_options', 'embedding_model',
+        'split_strategy', 'chunk_size', 'ctx_size'
+    ]
+    defaults = {
+        'llm_options': {},
+        'embedding_model': 'all-MiniLM-L6-v2',
+        'split_strategy': 'recursive',
+        'chunk_size': 1000,
+        'ctx_size': 5000
+    }
     
-    def __init__(self, 
+    def __init__(self, *,
                  db_location: Optional[str] = None, 
-                 llm_backend: str = 'llama-cpp',
-                 llm_model: str = '/home/avalente/models/mistral-7b-instruct-v0.2.Q4_0.gguf',
-                 llm_options: dict = {},
-                 embedding_model: str = 'all-MiniLM-L6-v2',
-                 split_strategy: TSplitStrategyLiteral = 'recursive',
-                 chunk_size: int = 1000,
-                 ctx_size: int = 5000) -> None:
+                 llm_backend: Optional[str] = None,
+                 llm_model: Optional[str] = None,
+                 llm_options: Optional[dict] = None,
+                 embedding_model: Optional[str] = None,
+                 split_strategy: Optional[TSplitStrategyLiteral] = None,
+                 chunk_size: Optional[int] = None,
+                 ctx_size: Optional[int] = None,
+                 cfg: Optional[OmegaConf] = None,
+                 try_load_db_config: bool = True,
+                 log_in_db: bool = True) -> None:
+        """
+        Initialize the Annotator object.
+        
+        Args:
+            db_location: The location of the database.
+            llm_backend: The LLM backend to use.
+            llm_model: The LLM model to use.
+            llm_options: Additional options to pass to the LLM model.
+            embedding_model: The SentenceTransformer model to use for embeddings.
+            split_strategy: The strategy to use for splitting text into chunks.
+            chunk_size: The size of the chunks to split the text into.
+            ctx_size: The size of the context to use for contextualization.
+            cfg: A configuration object (superseded by other arguments).
+            try_load_db_config: if True and cfg is None, try to load the db config file.
+            log_in_db: 
+        """
+        # Load configuration (by default, try to load the db config file)
+        if try_load_db_config and cfg is None and db_location is not None:
+            if os.path.exists(
+                cfg_path := os.path.join(db_location, 'parameters.yaml')):
+                cfg = OmegaConf.load(cfg_path)
+        if cfg is not None:
+            if 'annotator' in cfg:
+                cfg = cfg.annotator
+            for k, v in cfg.items():
+                if (v is not None) and (locals()[k] is None):
+                    locals()[k] = v
+            for k, v in self.defaults.items():
+                if locals()[k] is None:
+                    locals()[k] = v
+        
+        # Create config from arguments (for saving)
+        params = self._params_to_save
+        locals_dict = locals()
+        self.cfg = OmegaConf.create(
+            {k: locals_dict[k] for k in params}
+        )
         self.ctx_size = ctx_size
-        # llm_options = {'n_gpu_layers': -1, 'n_ctx': 4096, 'chat_model': True}
         
         # Load models
         self.nlp_models = NLPModels()
@@ -34,6 +86,15 @@ class Annotator:
         
         # Text splitter
         self.splitter = get_splitter(split_strategy, chunk_size)
+        
+        # Logging setup
+        logging_path = None
+        if log_in_db:
+            if db_location is None:
+                print("Warning: log_in_db is True but no db_location provided. Logging to default location.")
+            else:
+                logging_path = os.path.join(db_location, 'log')
+        log_setup(logging_path)
         
         # Load database
         log_message(f'Loading database {db_location}')
@@ -170,7 +231,4 @@ class Annotator:
             self._fact_extractor(chunk.text, ctx, source)
         
         # Save to disk
-        self.db.save()
-        
-        
-        
+        self.db.save(self.cfg)
