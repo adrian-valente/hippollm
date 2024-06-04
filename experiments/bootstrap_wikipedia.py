@@ -1,5 +1,8 @@
 """
-This scripts populates a database with entities corresponding to Wikipedia's articles in english (titles + short descriptaions), keeping only articles that have been seen at least min_views times in the past month (from a set of pageviews dump file), which decreases it to about 568k entities for min_views=100.
+This scripts populates a database with entities corresponding to Wikipedia's articles in english 
+(titles + short descriptions), keeping only articles that have been seen at least min_views times 
+in the past month (from a set of pageviews dump file), which decreases it to about 568k entities 
+for min_views=100.
 
 
 Usage:
@@ -23,9 +26,7 @@ from time import time
 
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 
-import sys
-sys.path.insert(0, '../src/')
-import storage
+from hippollm import storage
 
 
 def parse_pageviews(file):
