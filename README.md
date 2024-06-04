@@ -25,12 +25,14 @@ The program requires an LLM to run in annotation mode, which can be run locally 
 
 You can for example try to annotate a wikipedia page, and then ask questions about the subject:
 ```sh
-python hippollm.annotate_wikipedia Rome /path/to/stored_db --llm_backend openai --llm_model gpt-3.5-turbo-0613
+python hippollm.annotate_wikipedia Rome /path/to/stored_db \
+  --llm_backend openai --llm_model gpt-3.5-turbo-0613
 ```
 
 Note that you can also use one of our configurations (and use them as examples of yaml configurations). For example to run local inference with a Mistral model and llama-cpp, if you are in the root of this repository:
 ```sh
-python hippollm.annotate_wikipedia Rome /path/to/stored_db --cfg configs/mistral.yaml --llm_model /path/to/mistral_weights.gguf
+python hippollm.annotate_wikipedia Rome /path/to/stored_db \
+  --cfg configs/mistral.yaml --llm_model /path/to/mistral_weights.gguf
 ```
 
 To start the retrieval mode, simply provide a previously built database. One is provided in the examples of this repository, running by default with the OpenAI backend (you would need an API key in your environment variables):
@@ -40,7 +42,8 @@ python hippollm.retrieval examples/wikipedia_Paris
 
 But you can supersede the default arguments:
 ```sh
-python hippollm.retrieval examples/wikipedia_Paris --llm_backend llama_cpp --llm_model /path/to/mistral_weights.gguf
+python hippollm.retrieval examples/wikipedia_Paris \
+  --llm_backend llama_cpp --llm_model /path/to/mistral_weights.gguf
 ```
 
 
@@ -49,14 +52,16 @@ python hippollm.retrieval examples/wikipedia_Paris --llm_backend llama_cpp --llm
 The OpenAI backend is the easiest way to try the system if you have some credits on their API (the Groq backend is also already available, and we are just waiting for updates on their API). To use, simply make sure you have your `OPENAI_API_KEY` in your environment, and then run a query, for example:
 
 ```sh
-python -m hippollm.annotate_wikipedia Paris path/to/db --llm_backend openai --llm_model gpt-3.5-turbo-0613
+python -m hippollm.annotate_wikipedia Paris path/to/db \
+  --llm_backend openai --llm_model gpt-3.5-turbo-0613
 ```
 
 ### Llama-cpp
 The llama-cpp is the best way to run powerful LLMs locally for the moment, and the only backend to support grammar-guided generation. To run with for example Mistral 7B, you should download the GGUF weights, for example [here](https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF), and then run the annotator with the path pointing to those files, for example:
 
 ```sh
-python3 -m hippollm.annotate_txt file.txt path/to/db --llm_backend llama_cpp --llm_model path/to/mistral-7b-instruct-v0.2.Q4_0.gguf
+python3 -m hippollm.annotate_txt file.txt path/to/db \
+  --llm_backend llama_cpp --llm_model path/to/mistral-7b-instruct-v0.2.Q4_0.gguf
 ```
 
 ### Ollama
