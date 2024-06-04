@@ -81,6 +81,8 @@ class Annotator:
         
         # Load models
         self.nlp_models = NLPModels()
+        if llm_options is None:
+            llm_options = {}
         self.llm = load_llm(model=llm_model, backend=llm_backend, **llm_options)
         self.embedding_model = SentenceTransformerEmbeddings(model_name=embedding_model)
         
