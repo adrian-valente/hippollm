@@ -7,7 +7,7 @@ This is a prototype of (still experimental) project of a hybrid database system 
 More information can be found in the [abstract](assets/abstract_hycha24_1.pdf) and [poster](assets/poster.pdf).
 
 ## Installation
-To install the program, clone the repository and create a conda environment for this project (for example with `venv` or `conda`), and then do a local installation with `pip`. At least one backend should be installed, and several backends can be installed if specified between the brackets (see [available backends](#section-backend)). For example:
+To install the program, clone the repository and create a conda environment for this project (for example with `venv` or `conda`), and then do a local installation with `pip`. At least one backend should be installed, and several backends can be installed if specified between the brackets (see [available backends](#backends)). For example:
 
 ```sh
 conda create -n hippo_env python=3.11
@@ -16,7 +16,7 @@ pip install -e '.[llama-cpp, openai]'
 python install.sh  # Install punkt
 ```
 
-You can then also install our graphical front-end extension [hippoview](#section-frontend).
+You can then also install our graphical front-end extension [hippoview](#frontend).
 
 ## Usage
 This system works in two steps: in annotation mode, facts are extracted from unstructured text data and embedded in the hybrid memory system. In retrieval mode, a question can be asked, the most relevant facts in the memory will be retrieved and displayed, and an answer can then be generated using these facts as a source of knowledge.
@@ -44,7 +44,7 @@ python hippollm.retrieval examples/wikipedia_Paris --llm_backend llama_cpp --llm
 ```
 
 
-## Backends {#section-backend}
+## Backends
 ### OpenAI/Groq
 The OpenAI backend is the easiest way to try the system if you have some credits on their API (the Groq backend is also already available, and we are just waiting for updates on their API). To use, simply make sure you have your `OPENAI_API_KEY` in your environment, and then run a query, for example:
 
@@ -67,7 +67,7 @@ ollama serve&
 ```
 (where you then have to use the process id if you want to stop the Ollama server). That should be sufficient so that invocations of mistral from the code work! 
 
-## Front-end {#section-frontend}
+## Frontend
 
 We provide a front-end extension in this repository that is installable separately, see the [corresponding README](hippoview/README.md). Its code has been directly adapted from the [kgsearch repository](https://github.com/raphaelsty/kgsearch) by [@raphaelsty](https://github.com/raphaelsty) and is built with React and Flask.
 
