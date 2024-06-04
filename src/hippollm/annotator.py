@@ -67,9 +67,9 @@ class Annotator:
             for k, v in cfg.items():
                 if (v is not None) and (locals()[k] is None):
                     locals()[k] = v
-            for k, v in self.defaults.items():
-                if locals()[k] is None:
-                    locals()[k] = v
+        for k, v in self.defaults.items():
+            if locals()[k] is None:
+                locals()[k] = v
         
         # Create config from arguments (for saving)
         params = self._params_to_save
