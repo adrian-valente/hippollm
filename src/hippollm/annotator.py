@@ -16,11 +16,9 @@ from .splitters import get_splitter, TSplitStrategyLiteral
 
 
 class Annotator:
-    _params_to_save = [
-        'llm_backend', 'llm_model', 'llm_options', 'embedding_model',
-        'split_strategy', 'chunk_size', 'ctx_size'
-    ]
     defaults = {
+        'llm_backend': None,
+        'llm_model': None,
         'llm_options': {},
         'embedding_model': 'all-MiniLM-L6-v2',
         'split_strategy': 'recursive',
@@ -64,30 +62,26 @@ class Annotator:
         if cfg is not None:
             if 'annotator' in cfg:
                 cfg = cfg.annotator
-            for k, v in cfg.items():
-                if (v is not None) and (locals()[k] is None):
-                    locals()[k] = v
-        for k, v in self.defaults.items():
-            if locals()[k] is None:
-                locals()[k] = v
-        
-        # Create config from arguments (for saving)
-        params = self._params_to_save
-        locals_dict = locals()
-        self.cfg = OmegaConf.create(
-            {k: locals_dict[k] for k in params}
-        )
-        self.ctx_size = ctx_size
+            for k in self.defaults.keys():
+                if locals()[k] is not None:  # supersede with func params
+                    cfg[k] = locals()[k]
+            for k, v in self.defaults.items():  # append default values
+                if k not in cfg or cfg[k] is None:
+                    cfg[k] = v
+        else:
+            cfg = OmegaConf.create(self.defaults)
+            for k in self.defaults.keys():
+                if locals()[k] is not None:  # add default values
+                    cfg[k] = locals()[k]
+        self.cfg = cfg
         
         # Load models
         self.nlp_models = NLPModels()
-        if llm_options is None:
-            llm_options = {}
-        self.llm = load_llm(model=llm_model, backend=llm_backend, **llm_options)
-        self.embedding_model = SentenceTransformerEmbeddings(model_name=embedding_model)
+        self.llm = load_llm(model=cfg.llm_model, backend=cfg.llm_backend, **cfg.llm_options)
+        self.embedding_model = SentenceTransformerEmbeddings(model_name=cfg.embedding_model)
         
         # Text splitter
-        self.splitter = get_splitter(split_strategy, chunk_size)
+        self.splitter = get_splitter(cfg.split_strategy, cfg.chunk_size)
         
         # Logging setup
         logging_path = None
@@ -218,7 +212,7 @@ class Annotator:
         content = doc.page_content
         
         # Contextualization
-        prompt = contextualization_prompt.format(text=content[:min(self.ctx_size, len(content))])
+        prompt = contextualization_prompt.format(text=content[:min(self.cfg.ctx_size, len(content))])
         ans = self.llm.invoke(prompt, max_tokens=200, stop=['. ', '.\n'])
         ctx = first_sentence(ans)
         log_action('llm.contextualization', prompt, ans, context=ctx)
