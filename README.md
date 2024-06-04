@@ -90,5 +90,7 @@ The following amazing resources have been used:
 - [langchain](https://github.com/langchain-ai/langchain)
 - [ChromaDB](https://github.com/chroma-core/chroma)
 - [sentence-transformers](https://github.com/UKPLab/sentence-transformers)
-- [Mistral 7B](https://huggingface.co/mistralai/Mistral-7B-v0.1)
-- [ollama](https://github.com/ollama/ollama)
+- [Mistral 7B](https://huggingface.co/mistralai/Mistral-7B-v0.1) was used a lot during development
+- [llama.cpp](https://github.com/ggerganov/llama.cpp) and the bindings [llama-cpp-python](https://github.com/abetlen/llama-cpp-python)
+- [ollama](https://github.com/ollama/ollama) 
+- [kgsearch](https://github.com/raphaelsty/kgsearch) for the visual interface
