@@ -26,7 +26,7 @@ The program requires an LLM to run in annotation mode, which can be run locally 
 You can for example try to annotate a wikipedia page, and then ask questions about the subject:
 ```sh
 python hippollm.annotate_wikipedia Rome /path/to/stored_db \
-  --llm_backend openai --llm_model gpt-3.5-turbo-0613
+  --llm_backend openai --llm_model gpt-3.5-turbo
 ```
 
 Note that you can also use one of our configurations (and use them as examples of yaml configurations). For example to run local inference with a Mistral model and llama-cpp, if you are in the root of this repository:
@@ -53,7 +53,7 @@ The OpenAI backend is the easiest way to try the system if you have some credits
 
 ```sh
 python -m hippollm.annotate_wikipedia Paris path/to/db \
-  --llm_backend openai --llm_model gpt-3.5-turbo-0613
+  --llm_backend openai --llm_model gpt-3.5-turbo
 ```
 
 ### Llama-cpp
