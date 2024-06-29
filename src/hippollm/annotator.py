@@ -1,6 +1,7 @@
+from copy import deepcopy
 from omegaconf import OmegaConf
 import os
-from typing import Optional
+from typing import Any, Optional
 
 from langchain_core.documents import Document
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
@@ -16,15 +17,21 @@ from .splitters import get_splitter, TSplitStrategyLiteral
 
 
 class Annotator:
-    defaults = {
-        'llm_backend': None,
-        'llm_model': None,
-        'llm_options': {},
-        'embedding_model': 'all-MiniLM-L6-v2',
-        'split_strategy': 'recursive',
-        'chunk_size': 1000,
-        'ctx_size': 5000
-    }
+    _params_to_save = [
+        'llm_backend', 'llm_model', 'llm_options', 'embedding_model',
+        'split_strategy', 'chunk_size', 'ctx_size'
+    ]
+    _configurable_params = [
+        'llm_backend', 'llm_model', 'llm_options', 'embedding_model',
+        'split_strategy', 'chunk_size', 'ctx_size'
+    ]
+    
+    # Default instance variables
+    llm_options: dict[str, Any] = {}
+    embedding_model: str = 'all-MiniLM-L6-v2'
+    split_strategy: str = 'recursive'
+    chunk_size: int = 1000
+    ctx_size: int = 5000
     
     def __init__(self, *,
                  db_location: Optional[str] = None, 
@@ -52,36 +59,22 @@ class Annotator:
             ctx_size: The size of the context to use for contextualization.
             cfg: A configuration object (superseded by other arguments).
             try_load_db_config: if True and cfg is None, try to load the db config file.
-            log_in_db: 
+            log_in_db: if True, the log location will be in the database directory.
         """
         # Load configuration (by default, try to load the db config file)
         if try_load_db_config and cfg is None and db_location is not None:
             if os.path.exists(
                 cfg_path := os.path.join(db_location, 'parameters.yaml')):
                 cfg = OmegaConf.load(cfg_path)
-        if cfg is not None:
-            if 'annotator' in cfg:
-                cfg = cfg.annotator
-            for k in self.defaults.keys():
-                if locals()[k] is not None:  # supersede with func params
-                    cfg[k] = locals()[k]
-            for k, v in self.defaults.items():  # append default values
-                if k not in cfg or cfg[k] is None:
-                    cfg[k] = v
-        else:
-            cfg = OmegaConf.create(self.defaults)
-            for k in self.defaults.keys():
-                if locals()[k] is not None:  # add default values
-                    cfg[k] = locals()[k]
-        self.cfg = cfg
+        self._load_config(locals(), cfg)
         
         # Load models
         self.nlp_models = NLPModels()
-        self.llm = load_llm(model=cfg.llm_model, backend=cfg.llm_backend, **cfg.llm_options)
-        self.embedding_model = SentenceTransformerEmbeddings(model_name=cfg.embedding_model)
+        self.llm = load_llm(model=self.llm_model, backend=self.llm_backend, **self.llm_options)
+        self.embedding_model = SentenceTransformerEmbeddings(model_name=self.embedding_model)
         
         # Text splitter
-        self.splitter = get_splitter(cfg.split_strategy, cfg.chunk_size)
+        self.splitter = get_splitter(self.split_strategy, self.chunk_size)
         
         # Logging setup
         logging_path = None
@@ -101,6 +94,24 @@ class Annotator:
         log_message(f'Loaded database with {len(self.db.entities)} entities and '
                     f'{len(self.db.facts)} facts.')
         
+    def _load_config(self, local_vars: dict, cfg: Optional[OmegaConf]) -> None:
+        if cfg is not None:
+            if 'annotator' in cfg:
+                cfg = cfg.annotator
+        else:
+            cfg = {}
+        for attr in self._configurable_params:
+            if attr in local_vars and local_vars[attr] is not None:
+                setattr(self, attr, local_vars[attr])
+            elif attr in cfg and cfg[attr] is not None:
+                setattr(self, attr, cfg[attr])
+            else:
+                setattr(self, attr, getattr(self, attr, None))
+        
+        # Create config from arguments (for saving)
+        self.cfg = OmegaConf.create(
+            {k: getattr(self, k) for k in self._params_to_save}
+        )
     
     def _reformulate_fact(self, fact: str, ctx: str, chunk: str) -> str:
         reform_prompt = reformulation_prompt.format(fact=fact, context=ctx, text=chunk)
@@ -146,6 +157,8 @@ class Annotator:
         # Look for the closest entities in the database
         tmp_entities = self.db.get_closest_entities(entity, k=10)
         log_action('db.entity_lookup', entity, tmp_entities)
+        if len(tmp_entities) == 0:
+            return None
         
         # Classify matches with NLI model
         top_matches_i, sc = self.nlp_models.entailment_classify(

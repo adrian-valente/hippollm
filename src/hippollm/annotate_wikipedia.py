@@ -43,6 +43,6 @@ if __name__ == '__main__':
         db_location=args.db, 
         llm_model=args.llm_model, 
         llm_backend=args.llm_backend, 
-        cfg=args.cfg
+        cfg=cfg
     )
     annotator.annotate(doc)
